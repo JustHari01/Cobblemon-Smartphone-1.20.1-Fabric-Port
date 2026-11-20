@@ -1,0 +1,132 @@
+package com.nbp.cobblemon_smartphone.social
+
+import net.minecraft.network.FriendlyByteBuf
+import net.minecraft.server.MinecraftServer
+import java.util.UUID
+
+/**
+ * Wire/client projection of a [SocialPost].
+ *
+ * Intentionally not the storage model: the server keeps the full `likes` UUID set, but the client
+ * only ever needs the count plus whether *it* liked the post. Sending the whole set would waste
+ * bandwidth and expose who liked what.
+ */
+data class SocialPostView(
+    val id: Long,
+    val authorUuid: UUID,
+    val authorName: String,
+    val text: String,
+    val timestamp: Long,
+    val attachment: PokemonAttachment?,
+    val photo: SocialPhotoRef?,
+    val likeCount: Int,
+    val likedByMe: Boolean,
+    val skinUrl: String? = null,
+    val commentCount: Int = 0,
+    val poll: SocialPollView? = null
+) {
+    fun encode(buffer: FriendlyByteBuf) {
+        buffer.writeVarLong(id)
+        buffer.writeUUID(authorUuid)
+        buffer.writeUtf(authorName)
+        buffer.writeUtf(text)
+        buffer.writeLong(timestamp)
+        buffer.writeBoolean(attachment != null)
+        attachment?.let {
+            buffer.writeUtf(it.species)
+            buffer.writeVarInt(it.aspects.size)
+            it.aspects.forEach { aspect -> buffer.writeUtf(aspect) }
+            buffer.writeVarInt(it.level)
+            buffer.writeBoolean(it.nickname != null)
+            it.nickname?.let { nick -> buffer.writeUtf(nick) }
+            buffer.writeVarInt(it.ivs.size)
+            it.ivs.forEach(buffer::writeVarInt)
+            buffer.writeVarInt(it.evs.size)
+            it.evs.forEach(buffer::writeVarInt)
+            buffer.writeBoolean(it.gender != null)
+            it.gender?.let(buffer::writeUtf)
+            buffer.writeBoolean(it.ability != null)
+            it.ability?.let(buffer::writeUtf)
+            buffer.writeBoolean(it.nature != null)
+            it.nature?.let(buffer::writeUtf)
+            buffer.writeVarInt(it.types.size)
+            it.types.forEach(buffer::writeUtf)
+        }
+        buffer.writeBoolean(photo != null)
+        photo?.let {
+            buffer.writeUUID(it.id)
+            buffer.writeVarInt(it.width)
+            buffer.writeVarInt(it.height)
+        }
+        buffer.writeVarInt(likeCount)
+        buffer.writeBoolean(likedByMe)
+        buffer.writeBoolean(skinUrl != null)
+        skinUrl?.let { buffer.writeUtf(it) }
+        buffer.writeVarInt(commentCount)
+        buffer.writeBoolean(poll != null)
+        poll?.encode(buffer)
+    }
+
+    companion object {
+        fun of(post: SocialPost, viewer: UUID, server: MinecraftServer? = null): SocialPostView = SocialPostView(
+            id = post.id,
+            authorUuid = post.authorUuid,
+            authorName = post.authorName,
+            text = post.text,
+            timestamp = post.timestamp,
+            attachment = post.attachment,
+            photo = post.photo,
+            likeCount = post.likes.size,
+            likedByMe = post.isLikedBy(viewer),
+            skinUrl = server?.let { SkinUrlResolver.resolve(it, post.authorUuid) },
+            commentCount = post.comments.size,
+            poll = post.poll?.let { SocialPollView.of(it, viewer) }
+        )
+
+        fun decode(buffer: FriendlyByteBuf): SocialPostView {
+            val id = buffer.readVarLong()
+            val authorUuid = buffer.readUUID()
+            val authorName = buffer.readUtf()
+            val text = buffer.readUtf()
+            val timestamp = buffer.readLong()
+            val attachment = if (buffer.readBoolean()) {
+                val species = buffer.readUtf()
+                val aspectCount = buffer.readVarInt()
+                val aspects = (0 until aspectCount).map { buffer.readUtf() }.toSet()
+                val level = buffer.readVarInt()
+                val nickname = if (buffer.readBoolean()) buffer.readUtf() else null
+                val ivs = List(buffer.readVarInt()) { buffer.readVarInt() }
+                val evs = List(buffer.readVarInt()) { buffer.readVarInt() }
+                val gender = if (buffer.readBoolean()) buffer.readUtf() else null
+                val ability = if (buffer.readBoolean()) buffer.readUtf() else null
+                val nature = if (buffer.readBoolean()) buffer.readUtf() else null
+                val types = List(buffer.readVarInt()) { buffer.readUtf() }
+                PokemonAttachment(species, aspects, level, nickname, ivs, evs, gender, ability, nature, types)
+            } else {
+                null
+            }
+            val photo = if (buffer.readBoolean()) {
+                SocialPhotoRef(buffer.readUUID(), buffer.readVarInt(), buffer.readVarInt())
+            } else null
+            val likeCount = buffer.readVarInt()
+            val likedByMe = buffer.readBoolean()
+            val skinUrl = if (buffer.readBoolean()) buffer.readUtf() else null
+            val commentCount = buffer.readVarInt()
+            val poll = if (buffer.readBoolean()) SocialPollView.decode(buffer) else null
+            return SocialPostView(
+                id = id,
+                authorUuid = authorUuid,
+                authorName = authorName,
+                text = text,
+                timestamp = timestamp,
+                attachment = attachment,
+                photo = photo,
+                likeCount = likeCount,
+                likedByMe = likedByMe,
+                skinUrl = skinUrl,
+                commentCount = commentCount,
+                poll = poll
+            )
+        }
+    }
+}

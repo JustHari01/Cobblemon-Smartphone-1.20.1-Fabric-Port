@@ -1,0 +1,48 @@
+package com.nbp.cobblemon_smartphone.network.handler
+import com.nbp.cobblemon_smartphone.util.withColor
+
+import com.cobblemon.mod.common.api.net.ServerNetworkPacketHandler
+import com.nbp.cobblemon_smartphone.CobblemonSmartphone
+import com.nbp.cobblemon_smartphone.network.packet.OpenCraftingTablePacket
+import net.minecraft.network.chat.Component
+import net.minecraft.server.MinecraftServer
+import net.minecraft.server.level.ServerPlayer
+import net.minecraft.world.SimpleMenuProvider
+import net.minecraft.world.entity.player.Player
+import net.minecraft.world.inventory.ContainerLevelAccess
+import net.minecraft.world.inventory.CraftingMenu
+
+object OpenCraftingTableHandler : ServerNetworkPacketHandler<OpenCraftingTablePacket> {
+    override fun handle(packet: OpenCraftingTablePacket, server: MinecraftServer, player: ServerPlayer) {
+        server.execute { execute(player, isNativeAction = true) }
+    }
+
+    fun execute(player: ServerPlayer, isNativeAction: Boolean) {
+        if (isNativeAction && !CobblemonSmartphone.config.features.enableCrafting) {
+            player.displayClientMessage(
+                Component.translatable("message.nbp.crafting.disabled").withColor(0xfd0100),
+                true
+            )
+            return
+        }
+
+        if (isNativeAction && !com.nbp.cobblemon_smartphone.energy.SmartphoneEnergyHelper.checkAndConsumeEnergy(player, "cobblemon_smartphone:crafting")) {
+            return
+        }
+
+        player.openMenu(
+            SimpleMenuProvider(
+                { containerId, inventory, _ ->
+                    object : CraftingMenu(
+                        containerId,
+                        inventory,
+                        ContainerLevelAccess.create(player.level(), player.blockPosition())
+                    ) {
+                        override fun stillValid(p: Player) = true
+                    }
+                },
+                Component.translatable("container.crafting")
+            )
+        )
+    }
+}

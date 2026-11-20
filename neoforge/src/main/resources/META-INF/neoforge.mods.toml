@@ -1,0 +1,73 @@
+modLoader="kotlinforforge"
+loaderVersion="[5.5,)"
+#issueTrackerURL = ""
+license = "MIT"
+
+[[mods]]
+modId = "cobblemon_smartphone"
+version = "${version}"
+displayName = "Cobblemon Smartphone"
+authors = "RapidMesck, ZungGames"
+description = 'A smartphone with cobblemon integration for quick and portable functions like team healing, open your pc and your ender chest.'
+
+[[dependencies.cobblemon_smartphone]]
+modId = "neoforge"
+type = "required"
+versionRange = "[21.1,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.cobblemon_smartphone]]
+modId = "minecraft"
+type = "required"
+versionRange = "[1.21.1,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.cobblemon_smartphone]]
+modId = "curios"
+type = "optional"
+versionRange = "[9.0.0,)"
+ordering = "AFTER"
+side = "BOTH"
+
+[[dependencies.cobblemon_smartphone]]
+modId = "accessories"
+type = "optional"
+versionRange = "[0,)"
+ordering = "AFTER"
+side = "BOTH"
+
+[[dependencies.cobblemon_smartphone]]
+modId = "cobblenav"
+type = "optional"
+versionRange = "[0,)"
+ordering = "AFTER"
+side = "BOTH"
+
+[[dependencies.cobblemon_smartphone]]
+modId = "cobbledollars"
+type = "optional"
+versionRange = "[0,)"
+ordering = "AFTER"
+side = "BOTH"
+
+[[dependencies.cobblemon_smartphone]]
+modId = "waystones"
+type = "optional"
+versionRange = "[0,)"
+ordering = "AFTER"
+side = "BOTH"
+
+[[dependencies.cobblemon_smartphone]]
+modId = "rctmod"
+type = "optional"
+versionRange = "[0,)"
+ordering = "AFTER"
+side = "BOTH"
+
+[[mixins]]
+config = "cobblemonsmartphone.mixins.json"
+
+[[mixins]]
+config = "cobblemonsmartphone-tomsstorage.mixins.json"

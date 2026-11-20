@@ -1,0 +1,29 @@
+{
+  "required": true,
+  "package": "com.nbp.cobblemon_smartphone.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "minVersion": "0.8",
+  "mixins": [
+    "EntityMixin",
+    "MixinSmithingTransformRecipe"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+    "client": [
+        "CameraMixin",
+        "GuiGraphicsMixin",
+        "HumanoidModelMixin",
+        "ItemColorsMixin",
+        "ItemRendererMixin",
+        "KeyboardHandlerMixin",
+        "LevelRendererMixin",
+        "ModelLoaderMixin",
+        "MixinPlayerExtensionsKt",
+        "MixinItemInHandRenderer",
+        "MouseHandlerMixin",
+        "ItemInHandLayerMixin",
+        "PlayerRendererMixin",
+        "ScreenRenderMixin"
+    ]
+}

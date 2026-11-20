@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "group": "cobblemon_smartphone:rotom_bowtie",
+  "pattern": [
+    "WS"
+  ],
+  "key": {
+    "W": {
+      "item": "minecraft:lime_wool"
+    },
+    "S": {
+      "item": "minecraft:string"
+    }
+  },
+  "result": {
+    "count": 1,
+    "item": "cobblemon_smartphone:rotom_bowtie",
+    "nbt": "{\"rotom_accessory_color\":\"lime\",\"rotom_ribbon_color\":\"lime\",\"cobblemon_smartphone:dye_color\":8439583}"
+  }
+}

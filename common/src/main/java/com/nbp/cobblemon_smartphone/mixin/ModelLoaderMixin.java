@@ -1,0 +1,88 @@
+package com.nbp.cobblemon_smartphone.mixin;
+
+import com.nbp.cobblemon_smartphone.item.SmartphoneColor;
+import com.nbp.cobblemon_smartphone.skin.SmartphoneSkinRegistry;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.color.block.BlockColors;
+import net.minecraft.client.renderer.block.model.BlockModel;
+import net.minecraft.client.resources.model.*;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.profiling.ProfilerFiller;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Final;
+import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+import java.util.List;
+import java.util.Map;
+
+@Mixin(ModelBakery.class)
+public abstract class ModelLoaderMixin {
+
+    @Shadow
+    public abstract UnbakedModel getModel(ResourceLocation resourceLocation);
+
+    @Shadow
+    @Final
+    private Map<ResourceLocation, UnbakedModel> topLevelModels;
+
+    @Inject(method = "<init>", at = @At("TAIL"))
+    public void smartphone$init(
+            BlockColors blockColors,
+            ProfilerFiller profiler,
+            Map<ResourceLocation, BlockModel> jsonUnbakedModels,
+            Map<ResourceLocation, List<ModelBakery.LoadedJson>> blockStates,
+            CallbackInfo ci
+    ) {
+        // Para cada cor do seu enum, registramos os 2 modelos (2D e 3D)
+        for (SmartphoneColor color : SmartphoneColor.getEntries()) {
+            // Modelo 2D
+            ResourceLocation inventoryLocation = color.getInventoryModelPath();
+            UnbakedModel unbakedInvModel = this.getModel(inventoryLocation);
+            ModelResourceLocation inventoryModelId = new ModelResourceLocation(inventoryLocation, "inventory");
+            this.topLevelModels.put(inventoryModelId, unbakedInvModel);
+
+            // Modelo 3D
+            ResourceLocation handLocation = color.getHandModelPath();
+            UnbakedModel unbakedHandModel = this.getModel(handLocation);
+            ModelResourceLocation handModelId = new ModelResourceLocation(handLocation, "inventory");
+            this.topLevelModels.put(handModelId, unbakedHandModel);
+
+            // Modelo 3D do Rotom para cada cor
+            ResourceLocation rotomColorLocation = color.getRotomModelPath();
+            UnbakedModel unbakedRotomColorModel = this.getModel(rotomColorLocation);
+            ModelResourceLocation rotomColorModelId = new ModelResourceLocation(rotomColorLocation, "inventory");
+            this.topLevelModels.put(rotomColorModelId, unbakedRotomColorModel);
+        }
+
+        // Modelo 3D do Rotom base (original / fallback)
+        ResourceLocation rotomLocation = new ResourceLocation("cobblemon_smartphone", "item/rotom");
+        UnbakedModel unbakedRotomModel = this.getModel(rotomLocation);
+        ModelResourceLocation rotomModelId = new ModelResourceLocation(rotomLocation, "inventory");
+        this.topLevelModels.put(rotomModelId, unbakedRotomModel);
+
+        // Modelos customizados de skins/capinhas (Resource Packs + pasta smartphone_skins)
+        Minecraft mc = Minecraft.getInstance();
+        if (mc != null && mc.getResourceManager() != null) {
+            SmartphoneSkinRegistry.reload(mc.getResourceManager());
+        }
+        for (ResourceLocation skinModelLoc : SmartphoneSkinRegistry.INSTANCE.getAllModelLocations()) {
+            UnbakedModel unbakedSkin = this.getModel(skinModelLoc);
+            unbakedSkin.resolveParents(this::getModel);
+            this.topLevelModels.put(new ModelResourceLocation(skinModelLoc, "inventory"), unbakedSkin);
+        }
+        for (ResourceLocation jsonKey : jsonUnbakedModels.keySet()) {
+            String path = jsonKey.getPath();
+            if ((path.startsWith("models/smartphone_skins/") || path.startsWith("models/item/smartphone_skins/"))
+                    && path.endsWith(".json")) {
+                String trimmed = path.substring("models/".length(), path.length() - ".json".length());
+                ResourceLocation modelLoc = new ResourceLocation(jsonKey.getNamespace(), trimmed);
+                UnbakedModel unbakedSkin = this.getModel(modelLoc);
+                unbakedSkin.resolveParents(this::getModel);
+                this.topLevelModels.put(new ModelResourceLocation(modelLoc, "inventory"), unbakedSkin);
+            }
+        }
+    }
+}

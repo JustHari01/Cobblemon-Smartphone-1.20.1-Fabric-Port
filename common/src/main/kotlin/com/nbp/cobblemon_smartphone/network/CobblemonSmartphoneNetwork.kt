@@ -1,0 +1,544 @@
+package com.nbp.cobblemon_smartphone.network
+
+import com.nbp.cobblemon_smartphone.network.PacketRegisterInfo
+import com.nbp.cobblemon_smartphone.network.handler.CallActionHandler
+import com.nbp.cobblemon_smartphone.network.handler.CallOfflineHandler
+import com.nbp.cobblemon_smartphone.network.handler.CallStateHandler
+import com.nbp.cobblemon_smartphone.network.handler.CreatePostHandler
+import com.nbp.cobblemon_smartphone.network.handler.DeletePostHandler
+import com.nbp.cobblemon_smartphone.network.handler.ExecuteDatapackActionHandler
+import com.nbp.cobblemon_smartphone.network.handler.FeedPageHandler
+import com.nbp.cobblemon_smartphone.network.handler.HealPokemonHandler
+import com.nbp.cobblemon_smartphone.network.handler.LikePostHandler
+import com.nbp.cobblemon_smartphone.network.handler.MarkThreadReadHandler
+import com.nbp.cobblemon_smartphone.network.handler.NewDmHandler
+import com.nbp.cobblemon_smartphone.network.handler.RequestFeedPageHandler
+import com.nbp.cobblemon_smartphone.network.handler.RequestThreadListHandler
+import com.nbp.cobblemon_smartphone.network.handler.RequestThreadPageHandler
+import com.nbp.cobblemon_smartphone.network.handler.SendDmHandler
+import com.nbp.cobblemon_smartphone.network.handler.SyncThemeHandler
+import com.nbp.cobblemon_smartphone.network.handler.SyncUnreadHandler
+import com.nbp.cobblemon_smartphone.network.handler.ThreadListHandler
+import com.nbp.cobblemon_smartphone.network.handler.ThreadPageHandler
+import com.nbp.cobblemon_smartphone.network.handler.OpenCobblenavFishingnavHandler
+import com.nbp.cobblemon_smartphone.network.handler.OpenCobblenavPokenavHandler
+import com.nbp.cobblemon_smartphone.network.handler.OpenCobbledollarsShopHandler
+import com.nbp.cobblemon_smartphone.network.handler.OpenCraftingTableHandler
+import com.nbp.cobblemon_smartphone.network.handler.OpenPatchouliBookHandler
+import com.nbp.cobblemon_smartphone.network.handler.OpenPCHandler
+import com.nbp.cobblemon_smartphone.network.handler.OpenPokedexHandler
+import com.nbp.cobblemon_smartphone.network.handler.CompletePokedexScanHandler
+import com.nbp.cobblemon_smartphone.network.handler.StartPokedexScanHandler
+import com.nbp.cobblemon_smartphone.network.handler.OpenRctTrainerCardHandler
+import com.nbp.cobblemon_smartphone.network.handler.OpenRctTrainerCardScreenHandler
+import com.nbp.cobblemon_smartphone.network.handler.OpenAE2TerminalHandler
+import com.nbp.cobblemon_smartphone.network.handler.OpenAE2CraftingTerminalHandler
+import com.nbp.cobblemon_smartphone.network.handler.OpenRefinedStorageGridHandler
+import com.nbp.cobblemon_smartphone.network.handler.OpenTomsStorageTerminalHandler
+import com.nbp.cobblemon_smartphone.network.handler.OpenWaystonesWarpStoneHandler
+import com.nbp.cobblemon_smartphone.network.handler.RequestBiomeListHandler
+import com.nbp.cobblemon_smartphone.network.handler.BiomeListResponseHandler
+import com.nbp.cobblemon_smartphone.network.handler.RequestGpsSearchHandler
+import com.nbp.cobblemon_smartphone.network.handler.GpsSearchProgressHandler
+import com.nbp.cobblemon_smartphone.network.handler.GpsSearchResultHandler
+import com.nbp.cobblemon_smartphone.network.handler.RequestStructureListHandler
+import com.nbp.cobblemon_smartphone.network.handler.StructureListResponseHandler
+import com.nbp.cobblemon_smartphone.network.handler.RequestStructureSearchHandler
+import com.nbp.cobblemon_smartphone.network.handler.StructureSearchResultHandler
+import com.nbp.cobblemon_smartphone.network.handler.RequestSpeciesDetailHandler
+import com.nbp.cobblemon_smartphone.network.handler.RequestSpeciesListHandler
+import com.nbp.cobblemon_smartphone.network.handler.SpeciesListResponseHandler
+import com.nbp.cobblemon_smartphone.network.handler.SaveActionOrderHandler
+import com.nbp.cobblemon_smartphone.network.handler.SaveHiddenActionsHandler
+import com.nbp.cobblemon_smartphone.network.handler.SaveQuickActionsHandler
+import com.nbp.cobblemon_smartphone.network.handler.SaveThemeHandler
+import com.nbp.cobblemon_smartphone.network.handler.MutePlayerHandler
+import com.nbp.cobblemon_smartphone.network.handler.SaveSocialMuteHandler
+import com.nbp.cobblemon_smartphone.network.handler.SyncMutedPlayersHandler
+import com.nbp.cobblemon_smartphone.network.handler.SyncSocialMuteHandler
+import com.nbp.cobblemon_smartphone.network.handler.SpeciesDetailResponseHandler
+import com.nbp.cobblemon_smartphone.network.handler.SyncActionOrderHandler
+import com.nbp.cobblemon_smartphone.network.handler.SyncDatapackActionsHandler
+import com.nbp.cobblemon_smartphone.network.handler.SyncEnergyConfigHandler
+import com.nbp.cobblemon_smartphone.network.handler.SyncHiddenActionsHandler
+import com.nbp.cobblemon_smartphone.network.handler.SyncQuickActionsHandler
+import com.nbp.cobblemon_smartphone.network.handler.SocialCapabilitiesHandler
+import com.nbp.cobblemon_smartphone.network.handler.SocialMutationResultHandler
+import com.nbp.cobblemon_smartphone.network.handler.FeedPostUpdateHandler
+import com.nbp.cobblemon_smartphone.network.handler.ThreadSummaryUpdateHandler
+import com.nbp.cobblemon_smartphone.network.handler.UploadSocialPhotoHandler
+import com.nbp.cobblemon_smartphone.network.handler.RequestSocialPhotoHandler
+import com.nbp.cobblemon_smartphone.network.handler.SocialPhotoUploadResultHandler
+import com.nbp.cobblemon_smartphone.network.handler.SocialPhotoChunkHandler
+import com.nbp.cobblemon_smartphone.network.handler.AddCommentHandler
+import com.nbp.cobblemon_smartphone.network.handler.DeleteCommentHandler
+import com.nbp.cobblemon_smartphone.network.handler.RequestCommentsHandler
+import com.nbp.cobblemon_smartphone.network.handler.CommentsListHandler
+import com.nbp.cobblemon_smartphone.network.handler.RequestProfileHandler
+import com.nbp.cobblemon_smartphone.network.handler.UpdateProfileHandler
+import com.nbp.cobblemon_smartphone.network.handler.ToggleFollowHandler
+import com.nbp.cobblemon_smartphone.network.handler.ProfileResponseHandler
+import com.nbp.cobblemon_smartphone.network.handler.RequestNotificationsHandler
+import com.nbp.cobblemon_smartphone.network.handler.MarkNotificationReadHandler
+import com.nbp.cobblemon_smartphone.network.handler.NotificationListHandler
+import com.nbp.cobblemon_smartphone.network.handler.PushNotificationHandler
+import com.nbp.cobblemon_smartphone.network.handler.OpenGpsScreenHandler
+import com.nbp.cobblemon_smartphone.network.handler.OpenStructureCompassScreenHandler
+import com.nbp.cobblemon_smartphone.network.handler.OpenPokeInfoScreenHandler
+import com.nbp.cobblemon_smartphone.network.handler.server.OpenEnderChestHandler
+import com.nbp.cobblemon_smartphone.network.packet.CallActionPacket
+import com.nbp.cobblemon_smartphone.network.packet.CallOfflinePacket
+import com.nbp.cobblemon_smartphone.network.packet.CallStatePacket
+import com.nbp.cobblemon_smartphone.network.packet.CreatePostPacket
+import com.nbp.cobblemon_smartphone.network.packet.DeletePostPacket
+import com.nbp.cobblemon_smartphone.network.packet.ExecuteDatapackActionPacket
+import com.nbp.cobblemon_smartphone.network.packet.FeedPagePacket
+import com.nbp.cobblemon_smartphone.network.packet.HealPokemonPacket
+import com.nbp.cobblemon_smartphone.network.packet.LikePostPacket
+import com.nbp.cobblemon_smartphone.network.packet.MarkThreadReadPacket
+import com.nbp.cobblemon_smartphone.network.packet.NewDmPacket
+import com.nbp.cobblemon_smartphone.network.packet.RequestFeedPagePacket
+import com.nbp.cobblemon_smartphone.network.packet.RequestThreadListPacket
+import com.nbp.cobblemon_smartphone.network.packet.RequestThreadPagePacket
+import com.nbp.cobblemon_smartphone.network.packet.SendDmPacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncUnreadPacket
+import com.nbp.cobblemon_smartphone.network.packet.ThreadListPacket
+import com.nbp.cobblemon_smartphone.network.packet.ThreadPagePacket
+import com.nbp.cobblemon_smartphone.network.packet.OpenCobblenavFishingnavPacket
+import com.nbp.cobblemon_smartphone.network.packet.OpenCobblenavPokenavPacket
+import com.nbp.cobblemon_smartphone.network.packet.OpenCobbledollarsShopPacket
+import com.nbp.cobblemon_smartphone.network.packet.OpenCraftingTablePacket
+import com.nbp.cobblemon_smartphone.network.packet.OpenPatchouliBookPacket
+import com.nbp.cobblemon_smartphone.network.packet.OpenEnderChestPacket
+import com.nbp.cobblemon_smartphone.network.packet.OpenPCPacket
+import com.nbp.cobblemon_smartphone.network.packet.OpenPokedexPacket
+import com.nbp.cobblemon_smartphone.network.packet.CompletePokedexScanPacket
+import com.nbp.cobblemon_smartphone.network.packet.StartPokedexScanPacket
+import com.nbp.cobblemon_smartphone.network.packet.OpenRctTrainerCardPacket
+import com.nbp.cobblemon_smartphone.network.packet.OpenRctTrainerCardScreenPacket
+import com.nbp.cobblemon_smartphone.network.packet.OpenAE2TerminalPacket
+import com.nbp.cobblemon_smartphone.network.packet.OpenAE2CraftingTerminalPacket
+import com.nbp.cobblemon_smartphone.network.packet.OpenRefinedStorageGridPacket
+import com.nbp.cobblemon_smartphone.network.packet.OpenTomsStorageTerminalPacket
+import com.nbp.cobblemon_smartphone.network.packet.OpenWaystonesWarpStonePacket
+import com.nbp.cobblemon_smartphone.network.packet.RequestBiomeListPacket
+import com.nbp.cobblemon_smartphone.network.packet.BiomeListResponsePacket
+import com.nbp.cobblemon_smartphone.network.packet.RequestGpsSearchPacket
+import com.nbp.cobblemon_smartphone.network.packet.GpsSearchProgressPacket
+import com.nbp.cobblemon_smartphone.network.packet.GpsSearchResultPacket
+import com.nbp.cobblemon_smartphone.network.packet.RequestStructureListPacket
+import com.nbp.cobblemon_smartphone.network.packet.StructureListResponsePacket
+import com.nbp.cobblemon_smartphone.network.packet.RequestStructureSearchPacket
+import com.nbp.cobblemon_smartphone.network.packet.StructureSearchResultPacket
+import com.nbp.cobblemon_smartphone.network.packet.RequestSpeciesDetailPacket
+import com.nbp.cobblemon_smartphone.network.packet.RequestSpeciesListPacket
+import com.nbp.cobblemon_smartphone.network.packet.SaveActionOrderPacket
+import com.nbp.cobblemon_smartphone.network.packet.SaveHiddenActionsPacket
+import com.nbp.cobblemon_smartphone.network.packet.SaveQuickActionsPacket
+import com.nbp.cobblemon_smartphone.network.packet.SaveThemePacket
+import com.nbp.cobblemon_smartphone.network.packet.MutePlayerPacket
+import com.nbp.cobblemon_smartphone.network.packet.SaveSocialMutePacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncMutedPlayersPacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncSocialMutePacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncThemePacket
+import com.nbp.cobblemon_smartphone.network.packet.SpeciesDetailResponsePacket
+import com.nbp.cobblemon_smartphone.network.packet.SpeciesListResponsePacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncActionOrderPacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncDatapackActionsPacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncEnergyConfigPacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncHiddenActionsPacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncQuickActionsPacket
+import com.nbp.cobblemon_smartphone.network.packet.SocialCapabilitiesPacket
+import com.nbp.cobblemon_smartphone.network.packet.SocialMutationResultPacket
+import com.nbp.cobblemon_smartphone.network.packet.FeedPostUpdatePacket
+import com.nbp.cobblemon_smartphone.network.packet.ThreadSummaryUpdatePacket
+import com.nbp.cobblemon_smartphone.network.packet.UploadSocialPhotoPacket
+import com.nbp.cobblemon_smartphone.network.packet.RequestSocialPhotoPacket
+import com.nbp.cobblemon_smartphone.network.packet.SocialPhotoUploadResultPacket
+import com.nbp.cobblemon_smartphone.network.packet.SocialPhotoChunkPacket
+import com.nbp.cobblemon_smartphone.network.packet.AddCommentPacket
+import com.nbp.cobblemon_smartphone.network.packet.DeleteCommentPacket
+import com.nbp.cobblemon_smartphone.network.packet.RequestCommentsPacket
+import com.nbp.cobblemon_smartphone.network.packet.CommentsListPacket
+import com.nbp.cobblemon_smartphone.network.packet.RequestProfilePacket
+import com.nbp.cobblemon_smartphone.network.packet.ProfileResponsePacket
+import com.nbp.cobblemon_smartphone.network.packet.UpdateProfilePacket
+import com.nbp.cobblemon_smartphone.network.packet.ToggleFollowPacket
+import com.nbp.cobblemon_smartphone.network.packet.RequestNotificationsPacket
+import com.nbp.cobblemon_smartphone.network.packet.NotificationListPacket
+import com.nbp.cobblemon_smartphone.network.packet.PushNotificationPacket
+import com.nbp.cobblemon_smartphone.network.packet.MarkNotificationReadPacket
+import com.nbp.cobblemon_smartphone.network.packet.ChallengeBattlePacket
+import com.nbp.cobblemon_smartphone.network.packet.ChallengeTradePacket
+import com.nbp.cobblemon_smartphone.network.packet.VotePollPacket
+import com.nbp.cobblemon_smartphone.network.packet.ReportContentPacket
+import com.nbp.cobblemon_smartphone.network.handler.ChallengeBattleHandler
+import com.nbp.cobblemon_smartphone.network.handler.ChallengeTradeHandler
+import com.nbp.cobblemon_smartphone.network.handler.VotePollHandler
+import com.nbp.cobblemon_smartphone.network.handler.ReportContentHandler
+import com.nbp.cobblemon_smartphone.network.packet.OpenGpsScreenPacket
+import com.nbp.cobblemon_smartphone.network.packet.OpenStructureCompassScreenPacket
+import com.nbp.cobblemon_smartphone.network.packet.OpenPokeInfoScreenPacket
+import com.nbp.cobblemon_smartphone.network.packet.SetSmartphoneOpenStatePacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncRotomEquipStatePacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncRotomSocialSessionPacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncSmartphoneOpenStatePacket
+import com.nbp.cobblemon_smartphone.network.packet.SaveRotomRadarPacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncRotomRadarPacket
+import com.nbp.cobblemon_smartphone.network.packet.RotomAlertPacket
+import com.nbp.cobblemon_smartphone.network.packet.SetRotomScanPriorityPacket
+import com.nbp.cobblemon_smartphone.network.packet.CloseRotomDialoguePacket
+import com.nbp.cobblemon_smartphone.network.handler.CloseRotomDialogueHandler
+import com.nbp.cobblemon_smartphone.network.packet.FuseRotomPacket
+import com.nbp.cobblemon_smartphone.network.packet.DefuseRotomPacket
+import com.nbp.cobblemon_smartphone.network.handler.FuseRotomHandler
+import com.nbp.cobblemon_smartphone.network.handler.DefuseRotomHandler
+import com.nbp.cobblemon_smartphone.network.packet.SyncRotomScanPacket
+import com.nbp.cobblemon_smartphone.network.packet.RotomScanCompletePacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncRotomConfigPacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncRotomDialogueClosePacket
+import com.nbp.cobblemon_smartphone.network.handler.SetSmartphoneOpenStateHandler
+import com.nbp.cobblemon_smartphone.network.handler.SyncRotomEquipStateHandler
+import com.nbp.cobblemon_smartphone.network.handler.SyncRotomSocialSessionHandler
+import com.nbp.cobblemon_smartphone.network.handler.SyncSmartphoneOpenStateHandler
+import com.nbp.cobblemon_smartphone.network.handler.SaveRotomRadarHandler
+import com.nbp.cobblemon_smartphone.network.handler.SyncRotomRadarHandler
+import com.nbp.cobblemon_smartphone.network.handler.RotomAlertHandler
+import com.nbp.cobblemon_smartphone.network.handler.SetRotomScanPriorityHandler
+import com.nbp.cobblemon_smartphone.network.handler.SyncRotomScanHandler
+import com.nbp.cobblemon_smartphone.network.handler.RotomScanCompleteHandler
+import com.nbp.cobblemon_smartphone.network.handler.SyncRotomConfigHandler
+import com.nbp.cobblemon_smartphone.network.handler.SyncRotomDialogueCloseHandler
+import com.nbp.cobblemon_smartphone.network.packet.SaveSkinPacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncSmartphoneSkinsPacket
+import com.nbp.cobblemon_smartphone.network.handler.SaveSkinHandler
+import com.nbp.cobblemon_smartphone.network.handler.SyncSmartphoneSkinsHandler
+
+object CobblemonSmartphoneNetwork {
+    val s2cPayloads = generateS2CPacketInfoList()
+    val c2sPayloads = generateC2SPacketInfoList()
+
+    private fun generateS2CPacketInfoList(): List<PacketRegisterInfo<*>> {
+        val list = mutableListOf<PacketRegisterInfo<*>>()
+
+        list.add(
+            PacketRegisterInfo(
+                SyncDatapackActionsPacket.ID,
+                SyncDatapackActionsPacket::decode,
+                SyncDatapackActionsHandler
+            )
+        )
+        list.add(PacketRegisterInfo(SyncSmartphoneOpenStatePacket.ID, SyncSmartphoneOpenStatePacket::decode, SyncSmartphoneOpenStateHandler))
+        list.add(PacketRegisterInfo(SyncRotomEquipStatePacket.ID, SyncRotomEquipStatePacket::decode, SyncRotomEquipStateHandler))
+        list.add(PacketRegisterInfo(SyncRotomSocialSessionPacket.ID, SyncRotomSocialSessionPacket::decode, SyncRotomSocialSessionHandler))
+        list.add(PacketRegisterInfo(SyncActionOrderPacket.ID, SyncActionOrderPacket::decode, SyncActionOrderHandler))
+        list.add(
+            PacketRegisterInfo(
+                SyncHiddenActionsPacket.ID,
+                SyncHiddenActionsPacket::decode,
+                SyncHiddenActionsHandler
+            )
+        )
+        list.add(
+            PacketRegisterInfo(
+                SpeciesDetailResponsePacket.ID,
+                SpeciesDetailResponsePacket::decode,
+                SpeciesDetailResponseHandler
+            )
+        )
+        list.add(PacketRegisterInfo(SpeciesListResponsePacket.ID, SpeciesListResponsePacket::decode, SpeciesListResponseHandler))
+        list.add(
+            PacketRegisterInfo(
+                BiomeListResponsePacket.ID,
+                BiomeListResponsePacket::decode,
+                BiomeListResponseHandler
+            )
+        )
+        list.add(
+            PacketRegisterInfo(
+                GpsSearchResultPacket.ID,
+                GpsSearchResultPacket::decode,
+                GpsSearchResultHandler
+            )
+        )
+        list.add(
+            PacketRegisterInfo(
+                GpsSearchProgressPacket.ID,
+                GpsSearchProgressPacket::decode,
+                GpsSearchProgressHandler
+            )
+        )
+        list.add(
+            PacketRegisterInfo(
+                StructureListResponsePacket.ID,
+                StructureListResponsePacket::decode,
+                StructureListResponseHandler
+            )
+        )
+        list.add(
+            PacketRegisterInfo(
+                StructureSearchResultPacket.ID,
+                StructureSearchResultPacket::decode,
+                StructureSearchResultHandler
+            )
+        )
+        list.add(
+            PacketRegisterInfo(
+                SyncQuickActionsPacket.ID,
+                SyncQuickActionsPacket::decode,
+                SyncQuickActionsHandler
+            )
+        )
+        list.add(PacketRegisterInfo(FeedPagePacket.ID, FeedPagePacket::decode, FeedPageHandler))
+        list.add(PacketRegisterInfo(ThreadListPacket.ID, ThreadListPacket::decode, ThreadListHandler))
+        list.add(PacketRegisterInfo(ThreadPagePacket.ID, ThreadPagePacket::decode, ThreadPageHandler))
+        list.add(PacketRegisterInfo(NewDmPacket.ID, NewDmPacket::decode, NewDmHandler))
+        list.add(PacketRegisterInfo(SyncUnreadPacket.ID, SyncUnreadPacket::decode, SyncUnreadHandler))
+        list.add(
+            PacketRegisterInfo(
+                OpenRctTrainerCardScreenPacket.ID,
+                OpenRctTrainerCardScreenPacket::decode,
+                OpenRctTrainerCardScreenHandler
+            )
+        )
+        list.add(PacketRegisterInfo(CallStatePacket.ID, CallStatePacket::decode, CallStateHandler))
+        list.add(PacketRegisterInfo(CallOfflinePacket.ID, CallOfflinePacket::decode, CallOfflineHandler))
+        list.add(PacketRegisterInfo(CommentsListPacket.ID, CommentsListPacket::decode, CommentsListHandler))
+        list.add(PacketRegisterInfo(ProfileResponsePacket.ID, ProfileResponsePacket::decode, ProfileResponseHandler))
+        list.add(PacketRegisterInfo(NotificationListPacket.ID, NotificationListPacket::decode, NotificationListHandler))
+        list.add(PacketRegisterInfo(PushNotificationPacket.ID, PushNotificationPacket::decode, PushNotificationHandler))
+        list.add(PacketRegisterInfo(SocialCapabilitiesPacket.ID, SocialCapabilitiesPacket::decode, SocialCapabilitiesHandler))
+        list.add(PacketRegisterInfo(SocialMutationResultPacket.ID, SocialMutationResultPacket::decode, SocialMutationResultHandler))
+        list.add(PacketRegisterInfo(FeedPostUpdatePacket.ID, FeedPostUpdatePacket::decode, FeedPostUpdateHandler))
+        list.add(PacketRegisterInfo(ThreadSummaryUpdatePacket.ID, ThreadSummaryUpdatePacket::decode, ThreadSummaryUpdateHandler))
+        list.add(PacketRegisterInfo(SocialPhotoUploadResultPacket.ID, SocialPhotoUploadResultPacket::decode, SocialPhotoUploadResultHandler))
+        list.add(PacketRegisterInfo(SocialPhotoChunkPacket.ID, SocialPhotoChunkPacket::decode, SocialPhotoChunkHandler))
+        list.add(PacketRegisterInfo(SyncSocialMutePacket.ID, SyncSocialMutePacket::decode, SyncSocialMuteHandler))
+        list.add(PacketRegisterInfo(SyncThemePacket.ID, SyncThemePacket::decode, SyncThemeHandler))
+        list.add(PacketRegisterInfo(SyncEnergyConfigPacket.ID, SyncEnergyConfigPacket::decode, SyncEnergyConfigHandler))
+        list.add(
+            PacketRegisterInfo(
+                SyncMutedPlayersPacket.ID,
+                SyncMutedPlayersPacket::decode,
+                SyncMutedPlayersHandler
+            )
+        )
+        list.add(PacketRegisterInfo(OpenGpsScreenPacket.ID, OpenGpsScreenPacket::decode, OpenGpsScreenHandler))
+        list.add(PacketRegisterInfo(OpenStructureCompassScreenPacket.ID, OpenStructureCompassScreenPacket::decode, OpenStructureCompassScreenHandler))
+        list.add(PacketRegisterInfo(OpenPokeInfoScreenPacket.ID, OpenPokeInfoScreenPacket::decode, OpenPokeInfoScreenHandler))
+        list.add(PacketRegisterInfo(SyncRotomRadarPacket.ID, SyncRotomRadarPacket::decode, SyncRotomRadarHandler))
+        list.add(PacketRegisterInfo(RotomAlertPacket.ID, RotomAlertPacket::decode, RotomAlertHandler))
+        list.add(PacketRegisterInfo(SyncRotomScanPacket.ID, SyncRotomScanPacket::decode, SyncRotomScanHandler))
+        list.add(PacketRegisterInfo(RotomScanCompletePacket.ID, RotomScanCompletePacket::decode, RotomScanCompleteHandler))
+        list.add(PacketRegisterInfo(SyncRotomConfigPacket.ID, SyncRotomConfigPacket::decode, SyncRotomConfigHandler))
+        list.add(PacketRegisterInfo(SyncRotomDialogueClosePacket.ID, SyncRotomDialogueClosePacket::decode, SyncRotomDialogueCloseHandler))
+        list.add(PacketRegisterInfo(SyncSmartphoneSkinsPacket.ID, SyncSmartphoneSkinsPacket::decode, SyncSmartphoneSkinsHandler))
+
+        return list
+    }
+
+    private fun generateC2SPacketInfoList(): List<PacketRegisterInfo<*>> {
+        val list = mutableListOf<PacketRegisterInfo<*>>()
+
+        list.add(PacketRegisterInfo(HealPokemonPacket.ID, HealPokemonPacket::decode, HealPokemonHandler))
+        list.add(PacketRegisterInfo(OpenPCPacket.ID, OpenPCPacket::decode, OpenPCHandler))
+        list.add(PacketRegisterInfo(OpenEnderChestPacket.ID, OpenEnderChestPacket::decode, OpenEnderChestHandler))
+        list.add(
+            PacketRegisterInfo(
+                OpenCobblenavPokenavPacket.ID,
+                OpenCobblenavPokenavPacket::decode,
+                OpenCobblenavPokenavHandler
+            )
+        )
+        list.add(
+            PacketRegisterInfo(
+                OpenCobblenavFishingnavPacket.ID,
+                OpenCobblenavFishingnavPacket::decode,
+                OpenCobblenavFishingnavHandler
+            )
+        )
+        list.add(
+            PacketRegisterInfo(
+                OpenCobbledollarsShopPacket.ID,
+                OpenCobbledollarsShopPacket::decode,
+                OpenCobbledollarsShopHandler
+            )
+        )
+        list.add(
+            PacketRegisterInfo(
+                OpenWaystonesWarpStonePacket.ID,
+                OpenWaystonesWarpStonePacket::decode,
+                OpenWaystonesWarpStoneHandler
+            )
+        )
+        list.add(
+            PacketRegisterInfo(
+                OpenTomsStorageTerminalPacket.ID,
+                OpenTomsStorageTerminalPacket::decode,
+                OpenTomsStorageTerminalHandler
+            )
+        )
+        list.add(
+            PacketRegisterInfo(
+                OpenRefinedStorageGridPacket.ID,
+                OpenRefinedStorageGridPacket::decode,
+                OpenRefinedStorageGridHandler
+            )
+        )
+        list.add(
+            PacketRegisterInfo(
+                OpenAE2TerminalPacket.ID,
+                OpenAE2TerminalPacket::decode,
+                OpenAE2TerminalHandler
+            )
+        )
+        list.add(
+            PacketRegisterInfo(
+                OpenAE2CraftingTerminalPacket.ID,
+                OpenAE2CraftingTerminalPacket::decode,
+                OpenAE2CraftingTerminalHandler
+            )
+        )
+        list.add(
+            PacketRegisterInfo(
+                OpenRctTrainerCardPacket.ID,
+                OpenRctTrainerCardPacket::decode,
+                OpenRctTrainerCardHandler
+            )
+        )
+        list.add(PacketRegisterInfo(OpenPokedexPacket.ID, OpenPokedexPacket::decode, OpenPokedexHandler))
+        list.add(PacketRegisterInfo(CompletePokedexScanPacket.ID, CompletePokedexScanPacket::decode, CompletePokedexScanHandler))
+        list.add(PacketRegisterInfo(StartPokedexScanPacket.ID, StartPokedexScanPacket::decode, StartPokedexScanHandler))
+        list.add(
+            PacketRegisterInfo(
+                OpenPatchouliBookPacket.ID,
+                OpenPatchouliBookPacket::decode,
+                OpenPatchouliBookHandler
+            )
+        )
+        list.add(
+            PacketRegisterInfo(
+                ExecuteDatapackActionPacket.ID,
+                ExecuteDatapackActionPacket::decode,
+                ExecuteDatapackActionHandler
+            )
+        )
+        list.add(PacketRegisterInfo(SaveActionOrderPacket.ID, SaveActionOrderPacket::decode, SaveActionOrderHandler))
+        list.add(PacketRegisterInfo(SaveThemePacket.ID, SaveThemePacket::decode, SaveThemeHandler))
+        list.add(
+            PacketRegisterInfo(
+                SaveHiddenActionsPacket.ID,
+                SaveHiddenActionsPacket::decode,
+                SaveHiddenActionsHandler
+            )
+        )
+        list.add(
+            PacketRegisterInfo(
+                OpenCraftingTablePacket.ID,
+                OpenCraftingTablePacket::decode,
+                OpenCraftingTableHandler
+            )
+        )
+        list.add(
+            PacketRegisterInfo(
+                RequestSpeciesDetailPacket.ID,
+                RequestSpeciesDetailPacket::decode,
+                RequestSpeciesDetailHandler
+            )
+        )
+        list.add(PacketRegisterInfo(RequestSpeciesListPacket.ID, RequestSpeciesListPacket::decode, RequestSpeciesListHandler))
+        list.add(
+            PacketRegisterInfo(
+                RequestBiomeListPacket.ID,
+                RequestBiomeListPacket::decode,
+                RequestBiomeListHandler
+            )
+        )
+        list.add(
+            PacketRegisterInfo(
+                RequestGpsSearchPacket.ID,
+                RequestGpsSearchPacket::decode,
+                RequestGpsSearchHandler
+            )
+        )
+        list.add(
+            PacketRegisterInfo(
+                RequestStructureListPacket.ID,
+                RequestStructureListPacket::decode,
+                RequestStructureListHandler
+            )
+        )
+        list.add(
+            PacketRegisterInfo(
+                RequestStructureSearchPacket.ID,
+                RequestStructureSearchPacket::decode,
+                RequestStructureSearchHandler
+            )
+        )
+        list.add(
+            PacketRegisterInfo(
+                SaveQuickActionsPacket.ID,
+                SaveQuickActionsPacket::decode,
+                SaveQuickActionsHandler
+            )
+        )
+        list.add(
+            PacketRegisterInfo(
+                RequestFeedPagePacket.ID,
+                RequestFeedPagePacket::decode,
+                RequestFeedPageHandler
+            )
+        )
+        list.add(PacketRegisterInfo(CreatePostPacket.ID, CreatePostPacket::decode, CreatePostHandler))
+        list.add(PacketRegisterInfo(UploadSocialPhotoPacket.ID, UploadSocialPhotoPacket::decode, UploadSocialPhotoHandler))
+        list.add(PacketRegisterInfo(RequestSocialPhotoPacket.ID, RequestSocialPhotoPacket::decode, RequestSocialPhotoHandler))
+        list.add(PacketRegisterInfo(LikePostPacket.ID, LikePostPacket::decode, LikePostHandler))
+        list.add(PacketRegisterInfo(DeletePostPacket.ID, DeletePostPacket::decode, DeletePostHandler))
+        list.add(PacketRegisterInfo(AddCommentPacket.ID, AddCommentPacket::decode, AddCommentHandler))
+        list.add(PacketRegisterInfo(DeleteCommentPacket.ID, DeleteCommentPacket::decode, DeleteCommentHandler))
+        list.add(PacketRegisterInfo(RequestCommentsPacket.ID, RequestCommentsPacket::decode, RequestCommentsHandler))
+        list.add(PacketRegisterInfo(RequestProfilePacket.ID, RequestProfilePacket::decode, RequestProfileHandler))
+        list.add(PacketRegisterInfo(UpdateProfilePacket.ID, UpdateProfilePacket::decode, UpdateProfileHandler))
+        list.add(PacketRegisterInfo(ToggleFollowPacket.ID, ToggleFollowPacket::decode, ToggleFollowHandler))
+        list.add(PacketRegisterInfo(RequestNotificationsPacket.ID, RequestNotificationsPacket::decode, RequestNotificationsHandler))
+        list.add(PacketRegisterInfo(MarkNotificationReadPacket.ID, MarkNotificationReadPacket::decode, MarkNotificationReadHandler))
+        list.add(
+            PacketRegisterInfo(
+                RequestThreadListPacket.ID,
+                RequestThreadListPacket::decode,
+                RequestThreadListHandler
+            )
+        )
+        list.add(
+            PacketRegisterInfo(
+                RequestThreadPagePacket.ID,
+                RequestThreadPagePacket::decode,
+                RequestThreadPageHandler
+            )
+        )
+        list.add(PacketRegisterInfo(SendDmPacket.ID, SendDmPacket::decode, SendDmHandler))
+        list.add(
+            PacketRegisterInfo(
+                MarkThreadReadPacket.ID,
+                MarkThreadReadPacket::decode,
+                MarkThreadReadHandler
+            )
+        )
+        list.add(PacketRegisterInfo(CallActionPacket.ID, CallActionPacket::decode, CallActionHandler))
+        list.add(PacketRegisterInfo(SaveSocialMutePacket.ID, SaveSocialMutePacket::decode, SaveSocialMuteHandler))
+        list.add(PacketRegisterInfo(MutePlayerPacket.ID, MutePlayerPacket::decode, MutePlayerHandler))
+        list.add(PacketRegisterInfo(ChallengeBattlePacket.ID, ChallengeBattlePacket::decode, ChallengeBattleHandler))
+        list.add(PacketRegisterInfo(ChallengeTradePacket.ID, ChallengeTradePacket::decode, ChallengeTradeHandler))
+        list.add(PacketRegisterInfo(VotePollPacket.ID, VotePollPacket::decode, VotePollHandler))
+        list.add(PacketRegisterInfo(ReportContentPacket.ID, ReportContentPacket::decode, ReportContentHandler))
+        list.add(PacketRegisterInfo(SetSmartphoneOpenStatePacket.ID, SetSmartphoneOpenStatePacket::decode, SetSmartphoneOpenStateHandler))
+        list.add(PacketRegisterInfo(SaveRotomRadarPacket.ID, SaveRotomRadarPacket::decode, SaveRotomRadarHandler))
+        list.add(PacketRegisterInfo(SetRotomScanPriorityPacket.ID, SetRotomScanPriorityPacket::decode, SetRotomScanPriorityHandler))
+        list.add(PacketRegisterInfo(CloseRotomDialoguePacket.ID, CloseRotomDialoguePacket::decode, CloseRotomDialogueHandler))
+        list.add(PacketRegisterInfo(FuseRotomPacket.ID, FuseRotomPacket::decode, FuseRotomHandler))
+        list.add(PacketRegisterInfo(DefuseRotomPacket.ID, DefuseRotomPacket::decode, DefuseRotomHandler))
+        list.add(PacketRegisterInfo(SaveSkinPacket.ID, SaveSkinPacket::decode, SaveSkinHandler))
+
+        return list
+    }
+}

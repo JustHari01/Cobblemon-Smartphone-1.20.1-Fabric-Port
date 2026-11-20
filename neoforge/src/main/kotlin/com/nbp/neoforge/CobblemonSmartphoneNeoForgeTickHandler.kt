@@ -1,0 +1,79 @@
+package com.nbp.neoforge
+
+import com.nbp.cobblemon_smartphone.client.GpsClientState
+import com.nbp.cobblemon_smartphone.client.RotomTrackerClientState
+import com.nbp.cobblemon_smartphone.client.StructureCompassClientState
+import com.nbp.cobblemon_smartphone.client.gui.CallOverlay
+import com.nbp.cobblemon_smartphone.client.gui.GpsCompassOverlay
+import com.nbp.cobblemon_smartphone.client.gui.RotomDialogueOverlay
+import com.nbp.cobblemon_smartphone.client.gui.RotomTrackerOverlay
+import com.nbp.cobblemon_smartphone.client.gui.StructureCompassOverlay
+import com.nbp.cobblemon_smartphone.client.keybind.QuickActionDispatcher
+import com.nbp.cobblemon_smartphone.client.keybind.SmartphoneKeybinds
+import com.nbp.cobblemon_smartphone.client.render.RotomClientManager
+import com.nbp.cobblemon_smartphone.client.social.CallClientTicker
+import com.nbp.cobblemon_smartphone.client.social.SocialClientSession
+import com.nbp.cobblemon_smartphone.client.social.SocialPhotoClient
+import com.nbp.neoforge.keybind.NeoForgeSmartphoneKeybindHandler
+import net.neoforged.api.distmarker.Dist
+import net.neoforged.api.distmarker.OnlyIn
+import net.neoforged.bus.api.SubscribeEvent
+import net.neoforged.fml.common.EventBusSubscriber
+import net.neoforged.fml.common.EventBusSubscriber.Bus
+import net.neoforged.neoforge.client.event.ClientTickEvent
+import net.neoforged.neoforge.client.event.RenderGuiEvent
+import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent
+
+@OnlyIn(Dist.CLIENT)
+@EventBusSubscriber(modid = "cobblemon_smartphone", bus = Bus.GAME, value = [Dist.CLIENT])
+object CobblemonSmartphoneNeoForgeTickHandler {
+    @SubscribeEvent
+    fun onClientTick(event: ClientTickEvent.Post) {
+        while (SmartphoneKeybinds.OPEN_SMARTPHONE.consumeClick()) {
+            NeoForgeSmartphoneKeybindHandler.handleKeybind()
+        }
+        while (SmartphoneKeybinds.SCANNER.consumeClick()) {
+            NeoForgeSmartphoneKeybindHandler.handleScannerKeybind()
+        }
+        while (SmartphoneKeybinds.DISMISS_DIALOGUE.consumeClick()) {
+            com.nbp.cobblemon_smartphone.client.RotomDialogueClientState.dismissLocalDialogue()
+            RotomTrackerClientState.dismiss()
+        }
+        SmartphoneKeybinds.QUICK_ACTION_SLOTS.forEachIndexed { index, keyMapping ->
+            while (keyMapping.consumeClick()) {
+                QuickActionDispatcher.trigger(index)
+            }
+        }
+        while (SmartphoneKeybinds.ANSWER_CALL.consumeClick()) {
+            CallOverlay.pressAnswer()
+        }
+        while (SmartphoneKeybinds.DECLINE_CALL.consumeClick()) {
+            CallOverlay.pressHangup()
+        }
+        NeoForgeSmartphoneKeybindHandler.onClientTick(net.minecraft.client.Minecraft.getInstance())
+        CallClientTicker.tick()
+        RotomClientManager.tick()
+        SocialPhotoClient.tick()
+        GpsClientState.tick()
+        StructureCompassClientState.tick()
+        RotomTrackerClientState.tick()
+    }
+
+    @SubscribeEvent
+    fun onRenderGui(event: RenderGuiEvent.Post) {
+        CallOverlay.render(event.guiGraphics)
+        GpsCompassOverlay.render(event.guiGraphics)
+        StructureCompassOverlay.render(event.guiGraphics)
+        SocialPhotoClient.renderCameraOverlay(event.guiGraphics)
+        RotomDialogueOverlay.render(event.guiGraphics)
+        RotomTrackerOverlay.render(event.guiGraphics)
+    }
+
+    @SubscribeEvent
+    fun onLogout(event: ClientPlayerNetworkEvent.LoggingOut) {
+        SocialClientSession.clear()
+        GpsClientState.reset()
+        StructureCompassClientState.reset()
+        RotomTrackerClientState.reset()
+    }
+}

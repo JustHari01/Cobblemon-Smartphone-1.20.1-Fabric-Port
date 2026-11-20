@@ -1,0 +1,277 @@
+plugins {
+    id 'com.github.johnrengelman.shadow'
+}
+
+architectury {
+    platformSetupLoomIde()
+    fabric()
+}
+
+configurations {
+    common {
+        canBeResolved = true
+        canBeConsumed = false
+    }
+    compileClasspath.extendsFrom common
+    runtimeClasspath.extendsFrom common
+    developmentFabric.extendsFrom common
+
+    // Files in this configuration will be bundled into your mod using the Shadow plugin.
+    // Don't use the `shadow` configuration from the plugin itself as it's meant for excluding files.
+    shadowBundle {
+        canBeResolved = true
+        canBeConsumed = false
+    }
+}
+
+repositories {
+    maven {
+        name = "TerraformersMC"
+        url = "https://maven.terraformersmc.com/"
+        content {
+            excludeGroup "org.ladysnake.cardinal-components-api"
+        }
+    }
+    maven {
+        name = "Ladysnake Libs"
+        url = "https://maven.ladysnake.org/releases"
+    }
+    maven {
+        name = "Wisp Forest"
+        url = "https://maven.wispforest.io/releases"
+    }
+    maven {
+        name = "Su5eD"
+        url = "https://maven.su5ed.dev/releases"
+    }
+    maven {
+        name = "Shedaniel"
+        url = "https://maven.shedaniel.me/"
+    }
+}
+
+dependencies {
+    modImplementation "net.fabricmc:fabric-loader:$rootProject.fabric_loader_version"
+    modImplementation "net.fabricmc:fabric-language-kotlin:$rootProject.fabric_kotlin_version"
+
+    // Fabric API. This is technically optional, but you probably want it anyway.
+    modImplementation "net.fabricmc.fabric-api:fabric-api:$rootProject.fabric_api_version"
+    modImplementation "com.cobblemon:fabric:${rootProject.cobblemon_version}"
+
+    // Trinkets - Optional dependency
+    modCompileOnly("dev.emi:trinkets:${rootProject.trinkets_version}") {
+        exclude group: "net.fabricmc.fabric-api"
+    }
+    modLocalRuntime("dev.emi:trinkets:${rootProject.trinkets_version}") {
+        exclude group: "net.fabricmc.fabric-api"
+    }
+
+    // Accessories - Optional dependency (cross-loader). Compile against the API only;
+    // local runtime lets us test in dev. End users get Accessories from their modpack.
+    modCompileOnly("maven.modrinth:accessories:${rootProject.accessories_version}-fabric") {
+        exclude group: "net.fabricmc.fabric-api"
+    }
+    modLocalRuntime("maven.modrinth:accessories:${rootProject.accessories_version}-fabric") {
+        exclude group: "net.fabricmc.fabric-api"
+    }
+    // Accessories 1.20.1 declares owo-lib as a CurseForge dependency but its Fabric metadata
+    // does not load it; provide the matching 1.20 runtime library in the isolated dev server.
+    modLocalRuntime "maven.modrinth:owo-lib:0.11.2+1.20"
+    // This Accessories build also references Endec directly without embedding the library.
+    runtimeOnly "io.wispforest:endec:0.1.8"
+    runtimeOnly "io.wispforest.endec:gson:0.1.5"
+    runtimeOnly "io.wispforest.endec:netty:0.1.4"
+    // owo-lib (Accessories' own dependency) jar-in-jars Cardinal Components API, but only the
+    // base/entity modules - some loaded mod's component-initializer class implements both
+    // EntityComponentInitializer and BlockComponentInitializer, so the block module's class must
+    // also be resolvable at runtime or CCA's entity-plugin init throws NoClassDefFoundError.
+    modLocalRuntime "dev.onyxstudios.cardinal-components-api:cardinal-components-block:5.2.0"
+
+    // Simple Voice Chat - Optional dependency. Compile against the loader-agnostic API only; nothing
+    // is bundled. To exercise voice in dev, drop the SVC jar into fabric/run/mods manually — it is
+    // NOT pulled automatically because the published SVC jar is built with a newer Loom than this
+    // project uses, which modLocalRuntime's remapper rejects.
+    compileOnly "de.maxhenkel.voicechat:voicechat-api:${rootProject.voicechat_api_version}"
+
+    // Toms Storage - Optional dependency. The smartphone integration only talks to it through
+    // vanilla block tags/NBT (see compat/tomsstorage), so this is purely for IDE completion and
+    // dev-instance testing; nothing from the mod's own classes is referenced or bundled.
+    modCompileOnly("maven.modrinth:toms-storage:${rootProject.toms_storage_version}-fabric") {
+        exclude group: "net.fabricmc.fabric-api"
+    }
+    modLocalRuntime("maven.modrinth:toms-storage:${rootProject.toms_storage_version}-fabric") {
+        exclude group: "net.fabricmc.fabric-api"
+    }
+    // Cloth Config is a compatible optional dependency for Toms Storage and development runs.
+    modCompileOnly "me.shedaniel.cloth:cloth-config-fabric:${rootProject.cloth_config_version}"
+    modLocalRuntime "me.shedaniel.cloth:cloth-config-fabric:${rootProject.cloth_config_version}"
+
+    // Team Reborn Energy powers the Fabric item energy capability bridge.
+    modCompileOnly "teamreborn:energy:${rootProject.teamreborn_energy_version}"
+    modLocalRuntime "teamreborn:energy:${rootProject.teamreborn_energy_version}"
+
+    common(project(path: ':common', configuration: 'namedElements')) { transitive false }
+    shadowBundle project(path: ':common', configuration: 'transformProductionFabric')
+}
+
+// A dedicated multiplayer server plus two extra clients, each with its own run directory so they
+// never clash on options.txt/logs, and distinct usernames so the two clients get distinct offline
+// UUIDs and can message each other. Every one carries the -Dcobblemonsmartphone.devInstance=mp
+// marker so `stopDevInstances` can find and kill exactly these processes (and nothing else) when
+// they've been left running and are holding common/build locked.
+// Generated Gradle tasks: runServerMp, runClientA, runClientB.
+loom {
+    runs {
+        serverMp {
+            inherit server
+            runDir "runServerMp"
+            vmArg "-Dcobblemonsmartphone.devInstance=mp"
+        }
+        clientA {
+            inherit client
+            runDir "runClientA"
+            programArgs "--username", "PlayerA"
+            vmArg "-Dcobblemonsmartphone.devInstance=mp"
+        }
+        clientB {
+            inherit client
+            runDir "runClientB"
+            programArgs "--username", "PlayerB"
+            vmArg "-Dcobblemonsmartphone.devInstance=mp"
+        }
+        screenshotClient {
+            inherit client
+            runDir "runScreenshot"
+            programArgs "--username", "DevScreenshot"
+            vmArg "-Dsmartphone.screenshot=all"
+        }
+    }
+}
+
+tasks.withType(JavaExec).configureEach {
+    ["smartphone.screenshot", "smartphone.screenshot.dir"].each { key ->
+        if (System.getProperty(key) != null) {
+            systemProperty key, System.getProperty(key)
+        }
+    }
+}
+
+// Kills only the dev instances launched by runMultiplayer — matched by the unique -D marker above,
+// so the Gradle daemon, the IDE and any unrelated Java process are never touched. Runs before the
+// jar copy and the relaunch so their recompile isn't blocked by locked class files.
+tasks.register("stopDevInstances") {
+    group = "cobblemon smartphone"
+    description = "Kills stale runMultiplayer server/clients that keep common/build locked."
+    doLast {
+        def isWindows = System.getProperty("os.name").toLowerCase().contains("win")
+        if (isWindows) {
+            def ps = 'Get-CimInstance Win32_Process -Filter "Name=\'java.exe\' OR Name=\'javaw.exe\'" | Where-Object { $_.CommandLine -like \'*cobblemonsmartphone.devInstance=mp*\' } | ForEach-Object { Write-Host "Stopping stale dev instance PID $($_.ProcessId)"; Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }'
+            new ProcessBuilder("powershell", "-NoProfile", "-Command", ps).inheritIO().start().waitFor()
+        } else {
+            new ProcessBuilder("pkill", "-f", "cobblemonsmartphone.devInstance=mp").start().waitFor()
+        }
+        // Give the OS a moment to release the file handles before anything recompiles.
+        Thread.sleep(2000)
+    }
+}
+
+// Downloads the Simple Voice Chat mod jar and drops it into every dev run/mods folder, so voice can
+// be tested in dev. We copy it into mods/ rather than declaring a Gradle dependency because Loom's
+// mod remapper rejects the jar (built with a newer Loom); Fabric Loader's own dev-runtime remapper
+// handles it at load time. The download is cached under build/, so it only hits the network once.
+tasks.register("installVoicechatDev") {
+    group = "cobblemon smartphone"
+    description = "Downloads Simple Voice Chat into the dev run/mods folders (runServerMp, runClientA, runClientB)."
+    // Stop stale instances first, otherwise the copy would hit a jar locked by a running client.
+    dependsOn "stopDevInstances"
+    doLast {
+        def url = "https://cdn.modrinth.com/data/9eGKb6K1/versions/IttovdN3/voicechat-fabric-1.21.1-2.6.20.jar"
+        def fileName = "voicechat-fabric-1.21.1-2.6.20.jar"
+        def cache = new File(projectDir, "build/voicechat-cache/${fileName}")
+        if (!cache.exists()) {
+            cache.parentFile.mkdirs()
+            println "Downloading Simple Voice Chat (${fileName})..."
+            def connection = new URL(url).openConnection()
+            connection.setRequestProperty("User-Agent", "cobblemon_smartphone-dev-setup")
+            connection.inputStream.withCloseable { input -> cache.withOutputStream { out -> out << input } }
+        }
+        ["runServerMp", "runClientA", "runClientB"].each { dir ->
+            def mods = new File(projectDir, "${dir}/mods")
+            mods.mkdirs()
+            java.nio.file.Files.copy(
+                    cache.toPath(),
+                    new File(mods, fileName).toPath(),
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+            println "Installed ${fileName} -> ${dir}/mods"
+        }
+    }
+}
+
+// One command to open a dev server plus both clients, each in its own console window, with Simple
+// Voice Chat installed in all three. First stops any stale instances from a previous run (via the
+// stopDevInstances -> installVoicechatDev dependency chain) so their locked class files don't fail
+// the relaunch's recompile. In each client: Multiplayer -> Direct Connect -> localhost.
+tasks.register("runMultiplayer") {
+    group = "cobblemon smartphone"
+    description = "Stops stale dev instances, then opens a server + two clients (PlayerA/PlayerB) in separate windows."
+    dependsOn "installVoicechatDev"
+    doLast {
+        def root = rootProject.projectDir
+        def isWindows = System.getProperty("os.name").toLowerCase().contains("win")
+        def linuxTerminal = !isWindows && new File("/usr/bin/konsole").canExecute() ? "konsole" :
+                (!isWindows && new File("/usr/bin/alacritty").canExecute() ? "alacritty" : null)
+        def launch = { title, task, separateTerminal = false ->
+            if (isWindows) {
+                new ProcessBuilder("cmd", "/c", "start", title, "cmd", "/k", "gradlew.bat", task)
+                        .directory(root).inheritIO().start()
+            } else if (separateTerminal && linuxTerminal == "konsole") {
+                new ProcessBuilder("konsole", "--hold", "-e", "sh", "-c",
+                        "./gradlew ${task}; exec bash").directory(root).start()
+            } else if (separateTerminal && linuxTerminal == "alacritty") {
+                new ProcessBuilder("alacritty", "-e", "sh", "-c",
+                        "./gradlew ${task}; exec bash").directory(root).start()
+            } else {
+                new ProcessBuilder("sh", "-c", "./gradlew ${task}")
+                        .directory(root).inheritIO().start()
+            }
+        }
+
+        // Start the server first. Launching all three Loom tasks at once races while
+        // remapping the development mods (especially Simple Voice Chat).
+        launch("Fabric Server", ":fabric:runServerMp", true)
+        def ready = false
+        def deadline = System.currentTimeMillis() + 120000
+        while (!ready && System.currentTimeMillis() < deadline) {
+            try {
+                new java.net.Socket("127.0.0.1", 25565).withCloseable { ready = true }
+            } catch (Exception ignored) {
+                Thread.sleep(1000)
+            }
+        }
+        if (!ready) {
+            throw new GradleException("O servidor não abriu a porta 25565 em até 120 segundos.")
+        }
+
+        launch("Fabric Client A", ":fabric:runClientA")
+        Thread.sleep(3000)
+        launch("Fabric Client B", ":fabric:runClientB")
+        println "Launched server + 2 clients. In each client: Multiplayer -> Direct Connect -> localhost"
+    }
+}
+
+processResources {
+    inputs.property 'version', project.version
+
+    filesMatching('fabric.mod.json') {
+        expand version: project.version
+    }
+}
+
+shadowJar {
+    configurations = [project.configurations.shadowBundle]
+    archiveClassifier = 'dev-shadow'
+}
+
+remapJar {
+    input.set shadowJar.archiveFile
+}

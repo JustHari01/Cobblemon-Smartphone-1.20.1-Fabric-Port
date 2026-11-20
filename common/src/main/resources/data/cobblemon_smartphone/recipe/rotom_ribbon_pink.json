@@ -1,0 +1,22 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "group": "cobblemon_smartphone:rotom_ribbon",
+  "pattern": [
+    "W",
+    "S"
+  ],
+  "key": {
+    "W": {
+      "item": "minecraft:pink_wool"
+    },
+    "S": {
+      "item": "minecraft:string"
+    }
+  },
+  "result": {
+    "count": 1,
+    "item": "cobblemon_smartphone:rotom_ribbon",
+    "nbt": "{\"rotom_accessory_color\":\"pink\",\"rotom_ribbon_color\":\"pink\",\"cobblemon_smartphone:dye_color\":16738740}"
+  }
+}

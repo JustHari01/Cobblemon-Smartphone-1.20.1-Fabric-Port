@@ -1,0 +1,30 @@
+package com.nbp.cobblemon_smartphone.actions
+
+import com.cobblemon.mod.common.CobblemonSounds
+import com.nbp.cobblemon_smartphone.CobblemonSmartphone
+import com.nbp.cobblemon_smartphone.api.SmartphoneAction
+import com.nbp.cobblemon_smartphone.compat.rct.RctTrainerCardBridge
+import com.nbp.cobblemon_smartphone.network.packet.OpenRctTrainerCardPacket
+import net.minecraft.client.Minecraft
+import net.minecraft.resources.ResourceLocation
+
+object OpenRctTrainerCardAction : SmartphoneAction {
+    override val id = "${CobblemonSmartphone.ID}:rct_trainer_card"
+    override val texture = ResourceLocation(CobblemonSmartphone.ID, "textures/gui/buttons/trainer.png")
+    override val hoverTexture = ResourceLocation(CobblemonSmartphone.ID, "textures/gui/buttons/trainer_hover.png")
+
+    override fun onClick() {
+        val player = Minecraft.getInstance().player ?: return
+        player.playSound(CobblemonSounds.GUI_CLICK, 0.5f, 1f)
+        OpenRctTrainerCardPacket().sendToServer()
+        Minecraft.getInstance().setScreen(null)
+    }
+
+    override fun isEnabled(): Boolean {
+        if (!CobblemonSmartphone.config.features.enableRctTrainerCard) {
+            return false
+        }
+
+        return RctTrainerCardBridge.isAvailable
+    }
+}

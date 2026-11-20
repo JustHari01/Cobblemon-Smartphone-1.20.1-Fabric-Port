@@ -1,0 +1,130 @@
+package com.nbp.cobblemon_smartphone.api
+
+import com.google.gson.JsonParser
+import com.nbp.cobblemon_smartphone.CobblemonSmartphone
+import com.nbp.cobblemon_smartphone.isModLoaded
+import net.minecraft.server.packs.resources.PreparableReloadListener
+import net.minecraft.server.packs.resources.ResourceManager
+import net.minecraft.util.profiling.ProfilerFiller
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.Executor
+
+object DatapackActionLoader : PreparableReloadListener {
+    private val definitions = mutableListOf<DatapackActionDefinition>()
+    private const val PATH_PREFIX = "smartphone_actions"
+    private const val JSON_EXTENSION = ".json"
+
+    fun getDefinitions(): List<DatapackActionDefinition> = definitions.toList()
+
+    fun getActionCommands(actionId: String): List<String> =
+        definitions.find { it.id == actionId }?.commands.orEmpty().filterNotNull()
+
+    fun getActionFunctions(actionId: String): List<DatapackActionFunction> =
+        definitions.find { it.id == actionId }
+            ?.functions
+            .orEmpty()
+            .filterNotNull()
+            .mapNotNull(DatapackActionFunction::fromId)
+
+    fun getActionUseItems(actionId: String): List<UseItemEntry> =
+        definitions.find { it.id == actionId }
+            ?.useItems
+            .orEmpty()
+            .filterNotNull()
+            .filter { it.id.isNotBlank() }
+
+    fun getActionPatchouliBook(actionId: String): String? =
+        definitions.find { it.id == actionId }?.patchouliBook
+
+    fun getActionCooldown(actionId: String): Int =
+        definitions.find { it.id == actionId }?.cooldownSeconds ?: 0
+
+    fun getActionRequiredUpgrade(actionId: String): String? =
+        definitions.find { it.id == actionId }?.requireUpgrade
+
+    fun getActionFeCost(actionId: String): Int? =
+        definitions.find { it.id == actionId }?.feCost
+
+    override fun reload(
+        barrier: PreparableReloadListener.PreparationBarrier,
+        resourceManager: ResourceManager,
+        preparationProfiler: ProfilerFiller,
+        reloadProfiler: ProfilerFiller,
+        backgroundExecutor: Executor,
+        gameExecutor: Executor
+    ): CompletableFuture<Void> {
+        return CompletableFuture.supplyAsync({
+            val loaded = mutableListOf<DatapackActionDefinition>()
+            val resources = resourceManager.listResources(PATH_PREFIX) { id ->
+                id.path.endsWith(JSON_EXTENSION)
+            }
+
+            for ((resourceId, _) in resources.entries) {
+                try {
+                    val json = resourceManager.getResourceOrThrow(resourceId)
+                    json.open().use { stream ->
+                        val reader = stream.bufferedReader()
+                        val element = JsonParser.parseReader(reader)
+                        val definition = DatapackActionDefinition.GSON.fromJson(
+                            element, DatapackActionDefinition::class.java
+                        )
+                        if (definition != null && definition.id.isNotBlank()) {
+                            if (definition.requireMod != null && !isModLoaded(definition.requireMod)) {
+                                CobblemonSmartphone.LOGGER.info(
+                                    "Skipping datapack action '{}': required mod '{}' not loaded",
+                                    definition.id, definition.requireMod
+                                )
+                                continue
+                            }
+
+                            val commands = definition.commands.orEmpty().filterNotNull()
+                            val functions = definition.functions.orEmpty().filterNotNull()
+                            val useItems = definition.useItems.orEmpty().filterNotNull().filter { it.id.isNotBlank() }
+                            val patchouliBook = definition.patchouliBook
+                            if (!patchouliBook.isNullOrBlank() && !isModLoaded("patchouli")) {
+                                CobblemonSmartphone.LOGGER.info(
+                                    "Skipping datapack action '{}': required mod 'patchouli' not loaded",
+                                    definition.id
+                                )
+                                continue
+                            }
+
+                            val unknownFunctions = functions.filterNot(DatapackActionFunction::isKnown)
+                            if (unknownFunctions.isNotEmpty()) {
+                                CobblemonSmartphone.LOGGER.warn(
+                                    "Datapack action '{}' contains unknown functions: {}",
+                                    definition.id,
+                                    unknownFunctions.joinToString()
+                                )
+                            }
+
+                            val hasKnownFunction = functions.any(DatapackActionFunction::isKnown)
+                            val hasPatchouliBook = !patchouliBook.isNullOrBlank()
+                            if (commands.isEmpty() && !hasKnownFunction && useItems.isEmpty() && !hasPatchouliBook) {
+                                CobblemonSmartphone.LOGGER.warn(
+                                    "Skipping datapack action '{}': no commands, known functions, use_items, or patchouli_book were defined",
+                                    definition.id
+                                )
+                                continue
+                            }
+
+                            loaded.add(definition)
+                        }
+                    }
+                } catch (e: Exception) {
+                    CobblemonSmartphone.LOGGER.error(
+                        "Failed to load datapack action from {}", resourceId, e
+                    )
+                }
+            }
+            loaded.sortBy { it.order }
+            loaded
+        }, backgroundExecutor).thenCompose(barrier::wait).thenAcceptAsync({ loaded ->
+            definitions.clear()
+            definitions.addAll(loaded)
+            CobblemonSmartphone.LOGGER.info("Loaded {} datapack actions", definitions.size)
+        }, gameExecutor)
+    }
+
+    override fun getName() = "${CobblemonSmartphone.ID}:datapack_actions"
+}

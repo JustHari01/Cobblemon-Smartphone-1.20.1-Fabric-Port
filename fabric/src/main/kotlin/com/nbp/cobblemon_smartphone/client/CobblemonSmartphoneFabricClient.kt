@@ -1,0 +1,118 @@
+package com.nbp.cobblemon_smartphone.client
+
+import com.nbp.cobblemon_smartphone.CobblemonSmartphoneFabricNetworkManager
+import com.nbp.cobblemon_smartphone.client.dev.GuiScreenshotHarness
+import com.nbp.cobblemon_smartphone.client.gui.CallOverlay
+import com.nbp.cobblemon_smartphone.client.gui.GpsCompassOverlay
+import com.nbp.cobblemon_smartphone.client.RotomTrackerClientState
+import com.nbp.cobblemon_smartphone.client.gui.RotomDialogueOverlay
+import com.nbp.cobblemon_smartphone.client.gui.RotomTrackerOverlay
+import com.nbp.cobblemon_smartphone.client.gui.StructureCompassOverlay
+import com.nbp.cobblemon_smartphone.client.keybind.QuickActionDispatcher
+import com.nbp.cobblemon_smartphone.client.keybind.SmartphoneKeybinds
+import com.nbp.cobblemon_smartphone.client.render.RotomClientManager
+import com.nbp.cobblemon_smartphone.client.social.CallClientTicker
+import com.nbp.cobblemon_smartphone.client.social.SocialClientSession
+import com.nbp.cobblemon_smartphone.client.social.SocialPhotoClient
+import com.nbp.cobblemon_smartphone.compat.voicechat.VoiceChatBridge
+import com.nbp.cobblemon_smartphone.compat.refinedstorage.RefinedStorageAccessHolder
+import com.nbp.cobblemon_smartphone.compat.refinedstorage.RefinedStorageAccessImpl
+import net.fabricmc.loader.api.FabricLoader
+import com.nbp.cobblemon_smartphone.item.SmartphoneColor
+import net.fabricmc.api.ClientModInitializer
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
+import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper
+import net.fabricmc.fabric.api.client.model.loading.v1.ModelLoadingPlugin
+import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents
+import net.minecraft.client.Minecraft
+
+class CobblemonSmartphoneFabricClient : ClientModInitializer {
+    override fun onInitializeClient() {
+        // Refined Storage serializes its slot reference in the menu-open packet.
+        // Register the smartphone's inert client-side decoder before the first grid opens.
+        if (FabricLoader.getInstance().isModLoaded("refinedstorage")) {
+            RefinedStorageAccessImpl.initializeClient()
+        } else {
+            RefinedStorageAccessHolder.instance?.initializeClient()
+        }
+
+        com.nbp.cobblemon_smartphone.theme.SmartphoneThemeHelper.clientPlayerProvider = { Minecraft.getInstance().player }
+        com.nbp.cobblemon_smartphone.skin.SmartphoneSkinRegistry.clientResourceManagerProvider = { Minecraft.getInstance()?.resourceManager }
+        RotomInteractionClientHandler.register()
+
+        ModelLoadingPlugin.register { context ->
+            SmartphoneColor.entries.forEach { color ->
+                context.addModels(color.getHandModelPath())
+                context.addModels(color.getRotomModelPath())
+            }
+            context.addModels(net.minecraft.resources.ResourceLocation("cobblemon_smartphone", "item/rotom"))
+            Minecraft.getInstance()?.resourceManager?.let { rm ->
+                com.nbp.cobblemon_smartphone.skin.SmartphoneSkinRegistry.ensureLoaded(rm)
+            }
+            com.nbp.cobblemon_smartphone.skin.SmartphoneSkinRegistry.getAllModelLocations().forEach {
+                context.addModels(it)
+            }
+        }
+
+        KeyBindingHelper.registerKeyBinding(SmartphoneKeybinds.OPEN_SMARTPHONE)
+        KeyBindingHelper.registerKeyBinding(SmartphoneKeybinds.SCANNER)
+        KeyBindingHelper.registerKeyBinding(SmartphoneKeybinds.DISMISS_DIALOGUE)
+        SmartphoneKeybinds.QUICK_ACTION_SLOTS.forEach { KeyBindingHelper.registerKeyBinding(it) }
+        // Call hotkeys only make sense (and only appear in Controls) when Simple Voice Chat is present.
+        if (VoiceChatBridge.isModPresent) {
+            KeyBindingHelper.registerKeyBinding(SmartphoneKeybinds.ANSWER_CALL)
+            KeyBindingHelper.registerKeyBinding(SmartphoneKeybinds.DECLINE_CALL)
+        }
+
+        ClientTickEvents.END_CLIENT_TICK.register(ClientTickEvents.EndTick { client: Minecraft ->
+            while (SmartphoneKeybinds.OPEN_SMARTPHONE.consumeClick()) {
+                FabricSmartphoneKeybindHandler.handleKeybind()
+            }
+            while (SmartphoneKeybinds.SCANNER.consumeClick()) {
+                FabricSmartphoneKeybindHandler.handleScannerKeybind()
+            }
+            while (SmartphoneKeybinds.DISMISS_DIALOGUE.consumeClick()) {
+                RotomDialogueClientState.dismissLocalDialogue()
+                RotomTrackerClientState.dismiss()
+            }
+            SmartphoneKeybinds.QUICK_ACTION_SLOTS.forEachIndexed { index, keyMapping ->
+                while (keyMapping.consumeClick()) {
+                    QuickActionDispatcher.trigger(index)
+                }
+            }
+            while (SmartphoneKeybinds.ANSWER_CALL.consumeClick()) {
+                CallOverlay.pressAnswer()
+            }
+            while (SmartphoneKeybinds.DECLINE_CALL.consumeClick()) {
+                CallOverlay.pressHangup()
+            }
+            FabricSmartphoneKeybindHandler.onClientTick(client)
+            CallClientTicker.tick()
+            RotomClientManager.tick()
+            SocialPhotoClient.tick()
+            GpsClientState.tick()
+            StructureCompassClientState.tick()
+            RotomTrackerClientState.tick()
+            GuiScreenshotHarness.tick(client)
+        })
+
+        HudRenderCallback.EVENT.register(HudRenderCallback { guiGraphics, _ ->
+            CallOverlay.render(guiGraphics)
+            GpsCompassOverlay.render(guiGraphics)
+            StructureCompassOverlay.render(guiGraphics)
+            SocialPhotoClient.renderCameraOverlay(guiGraphics)
+            RotomDialogueOverlay.render(guiGraphics)
+            RotomTrackerOverlay.render(guiGraphics)
+        })
+
+        ClientPlayConnectionEvents.DISCONNECT.register { _, _ ->
+            SocialClientSession.clear()
+            GpsClientState.reset()
+            StructureCompassClientState.reset()
+            RotomTrackerClientState.reset()
+        }
+
+        CobblemonSmartphoneFabricNetworkManager.registerClientHandlers()
+    }
+}

@@ -1,0 +1,19 @@
+package com.nbp.cobblemon_smartphone.util;
+
+import net.minecraft.nbt.CompoundTag;
+
+public interface PreferencesSaver {
+    String SAVED_PREFERENCES_KEY = "cobblemonsmartphone_saved_preferences";
+    String BUCKET_INDEX_KEY = "bucket_index";
+    String SORTING_KEY = "sorting_key";
+    String ACTION_ORDER_KEY = "action_order";
+    String HIDDEN_ACTIONS_KEY = "hidden_actions";
+    String QUICK_ACTIONS_KEY = "quick_actions";
+    String SOCIAL_MUTED_KEY = "social_muted";
+    String MUTED_PLAYERS_KEY = "muted_players";
+    String THEME_KEY = "theme";
+    String WALLPAPER_KEY = "wallpaper";
+    String ROTOM_RADAR_KEY = "rotom_radar";
+
+    CompoundTag cobblemonsmartphone$getSavedPreferences();
+}

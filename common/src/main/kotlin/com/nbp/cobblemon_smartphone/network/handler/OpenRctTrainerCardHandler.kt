@@ -1,0 +1,45 @@
+package com.nbp.cobblemon_smartphone.network.handler
+import com.nbp.cobblemon_smartphone.util.withColor
+
+import com.cobblemon.mod.common.api.net.ServerNetworkPacketHandler
+import com.nbp.cobblemon_smartphone.CobblemonSmartphone
+import com.nbp.cobblemon_smartphone.isModLoaded
+import com.nbp.cobblemon_smartphone.network.packet.OpenRctTrainerCardPacket
+import com.nbp.cobblemon_smartphone.network.packet.OpenRctTrainerCardScreenPacket
+import net.minecraft.network.chat.Component
+import net.minecraft.server.MinecraftServer
+import net.minecraft.server.level.ServerPlayer
+
+object OpenRctTrainerCardHandler : ServerNetworkPacketHandler<OpenRctTrainerCardPacket> {
+    private const val RCT_MOD_ID = "rctmod"
+
+    override fun handle(packet: OpenRctTrainerCardPacket, server: MinecraftServer, player: ServerPlayer) {
+        server.execute {
+            execute(player)
+        }
+    }
+
+    fun execute(player: ServerPlayer) {
+        if (!CobblemonSmartphone.config.features.enableRctTrainerCard) {
+            player.displayClientMessage(
+                Component.translatable("message.nbp.rct.disabled").withColor(0xfd0100),
+                true
+            )
+            return
+        }
+
+        if (!isModLoaded(RCT_MOD_ID)) {
+            player.displayClientMessage(
+                Component.translatable("message.nbp.rct.unavailable").withColor(0xfd0100),
+                true
+            )
+            return
+        }
+
+        if (!com.nbp.cobblemon_smartphone.energy.SmartphoneEnergyHelper.checkAndConsumeEnergy(player, "cobblemon_smartphone:rct_trainer_card")) {
+            return
+        }
+
+        OpenRctTrainerCardScreenPacket().sendToPlayer(player)
+    }
+}

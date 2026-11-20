@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:smithing_transform",
+  "template": {
+    "item": "cobblemon:upgrade"
+  },
+  "base": {
+    "tag": "cobblemon_smartphone:smartphones"
+  },
+  "addition": {
+    "item": "minecraft:redstone_block"
+  },
+  "result": {
+    "count": 1,
+    "item": "cobblemon_smartphone:red_smartphone",
+    "nbt": "{\"cobblemon_smartphone:upgrades\":{\"upgrade_battery_tier2\":1b}}"
+  }
+}

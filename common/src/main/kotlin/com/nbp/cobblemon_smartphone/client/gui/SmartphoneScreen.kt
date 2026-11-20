@@ -1,0 +1,442 @@
+package com.nbp.cobblemon_smartphone.client.gui
+import com.nbp.cobblemon_smartphone.util.withColor
+
+import com.cobblemon.mod.common.api.gui.blitk
+import com.cobblemon.mod.common.CobblemonSounds
+import com.nbp.cobblemon_smartphone.actions.PokedexAction
+import com.nbp.cobblemon_smartphone.api.SmartphoneActionOrder
+import com.nbp.cobblemon_smartphone.api.SmartphoneActionRegistry
+import com.nbp.cobblemon_smartphone.api.SmartphoneHiddenActions
+import com.nbp.cobblemon_smartphone.CobblemonSmartphone
+import com.nbp.cobblemon_smartphone.energy.getEnergy
+import com.nbp.cobblemon_smartphone.energy.getMaxEnergy
+import com.nbp.cobblemon_smartphone.energy.hasEnoughEnergy
+import com.nbp.cobblemon_smartphone.energy.isInfiniteEnergy
+import com.nbp.cobblemon_smartphone.item.SmartphoneColor
+import com.nbp.cobblemon_smartphone.theme.SmartphoneTheme
+import com.nbp.cobblemon_smartphone.theme.SmartphoneThemeHelper
+import com.nbp.cobblemon_smartphone.theme.SmartphoneThemeRegistry
+import com.nbp.cobblemon_smartphone.theme.SmartphoneThemeRenderer
+import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
+import net.minecraft.ChatFormatting
+import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.screens.Screen
+import net.minecraft.network.chat.Component
+import net.minecraft.resources.ResourceLocation
+import net.minecraft.world.item.ItemStack
+
+class SmartphoneScreen(
+    private val color: SmartphoneColor,
+    private val smartphoneStack: ItemStack? = null
+) : Screen(Component.translatable("cobblemon_smartphone.screen.smartphone")) {
+    private val currentSmartphone: ItemStack?
+        get() = SmartphoneBatteryRenderer.resolveSmartphone(smartphoneStack)
+    private val actions get() = SmartphoneActionOrder.apply(SmartphoneActionRegistry.getEnabledActions())
+        .filter { !SmartphoneHiddenActions.isHidden(it.id) }
+    private val frameTexture = ResourceLocation(
+        "cobblemon_smartphone",
+        "textures/gui/smartphone_${color.modelName}.png"
+    )
+    private var screenX = 0
+    private var screenY = 0
+    private var currentPage = 0
+
+    private val actionsPerPage get() = GRID_COLUMNS * GRID_ROWS
+    private val maxPage get() = if (actions.isEmpty()) 0 else (actions.size - 1) / actionsPerPage
+
+    override fun isPauseScreen(): Boolean = false
+
+    override fun init() {
+        screenX = (width - GUI_WIDTH) / 2
+        screenY = (height - GUI_HEIGHT) / 2
+        PokedexAction.requestedColor = color
+        minecraft?.resourceManager?.let { SmartphoneThemeRegistry.ensureLoaded(it) }
+        // Set context so isEnabled() checks THIS smartphone's upgrades
+        SmartphoneHelper.contextSmartphone = smartphoneStack
+        SmartphoneHelper.contextColor = color
+    }
+
+    override fun removed() {
+        SmartphoneHelper.contextSmartphone = null
+        SmartphoneHelper.contextColor = null
+        super.removed()
+    }
+
+    override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
+        val matrices = guiGraphics.pose()
+
+        // Active theme resolution
+        val theme = SmartphoneThemeHelper.resolveCurrentTheme(currentSmartphone)
+
+        // Screen theme wallpaper background
+        SmartphoneThemeRenderer.renderTheme(guiGraphics, theme, screenX, screenY)
+
+        // Smartphone frame background
+        blitk(
+            matrixStack = matrices,
+            texture = com.nbp.cobblemon_smartphone.skin.SmartphoneSkinHelper.resolveFrameTexture(smartphoneStack, theme, color),
+            x = screenX,
+            y = screenY,
+            width = GUI_WIDTH,
+            height = GUI_HEIGHT
+        )
+
+        renderWorldTime(guiGraphics, theme)
+        renderHeaderSettingsButton(guiGraphics, mouseX, mouseY, theme)
+        SmartphoneBatteryRenderer.render(guiGraphics, screenX, screenY, isLargeScreen = false, smartphoneStack)
+
+        // Render actions as buttons
+        pagedActions().forEachIndexed { index, action ->
+            val (x, y) = getButtonPosition(index)
+            val hovered = isHovered(mouseX, mouseY, x, y)
+            val texture = if (hovered) {
+                theme.getAppHoverIcon(action.id, action.hoverTexture)
+            } else {
+                theme.getAppIcon(action.id, action.texture)
+            }
+            blitk(
+                matrixStack = matrices,
+                texture = texture,
+                x = screenX + x,
+                y = screenY + y,
+                width = BUTTON_WIDTH,
+                height = BUTTON_HEIGHT
+            )
+            renderBadge(guiGraphics, action.badgeCount(), x, y, theme)
+        }
+
+        renderPageDots(guiGraphics, theme)
+        renderFooterButtons(guiGraphics, mouseX, mouseY, theme)
+        renderHoveredTooltip(guiGraphics, mouseX, mouseY)
+    }
+
+    override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
+        if (isInHeaderSettingsButton(mouseX.toInt(), mouseY.toInt())) {
+            playClickSound()
+            Minecraft.getInstance().setScreen(SmartphoneSettingsScreen(color, currentSmartphone ?: smartphoneStack))
+            return true
+        }
+
+        // Handle button click
+        pagedActions().forEachIndexed { index, action ->
+            val (x, y) = getButtonPosition(index)
+            if (isHovered(mouseX.toInt(), mouseY.toInt(), x, y)) {
+                if (CobblemonSmartphone.config.energy.enableEnergy) {
+                    val cost = CobblemonSmartphone.config.energy.getCost(action.id)
+                    val phone = currentSmartphone
+                    if (cost > 0 && phone != null && !phone.hasEnoughEnergy(cost)) {
+                        Minecraft.getInstance().player?.let { p ->
+                            p.playSound(CobblemonSounds.GUI_CLICK, 0.5f, 0.5f)
+                            p.displayClientMessage(
+                                Component.translatable("message.cobblemon_smartphone.insufficient_energy", cost).withColor(0xfd0100),
+                                true
+                            )
+                        }
+                        return true
+                    }
+                }
+                action.onClick()
+                return true
+            }
+        }
+        // Handle page controls
+        if (isInFooterButton(mouseX.toInt(), mouseY.toInt(), FOOTER_PREV_X)) {
+            playClickSound()
+            changePage(-1)
+            return true
+        }
+        if (isInFooterButton(mouseX.toInt(), mouseY.toInt(), FOOTER_HOME_X)) {
+            playClickSound()
+            changePageTo(0)
+            return true
+        }
+        if (isInFooterButton(mouseX.toInt(), mouseY.toInt(), FOOTER_NEXT_X)) {
+            playClickSound()
+            changePage(1)
+            return true
+        }
+        return super.mouseClicked(mouseX, mouseY, button)
+    }
+
+    override fun mouseScrolled(
+        mouseX: Double,
+        mouseY: Double,
+        scrollAmount: Double
+    ): Boolean {
+        if (maxPage == 0 || scrollAmount == 0.0) {
+            return super.mouseScrolled(mouseX, mouseY, scrollAmount)
+        }
+
+        return changePage(if (scrollAmount < 0.0) 1 else -1)
+    }
+
+    private fun changePage(offset: Int): Boolean {
+        val nextPage = (currentPage + offset).coerceIn(0, maxPage)
+        if (nextPage == currentPage) {
+            return false
+        }
+
+        currentPage = nextPage
+        return true
+    }
+
+    private fun changePageTo(page: Int): Boolean {
+        val nextPage = page.coerceIn(0, maxPage)
+        if (nextPage == currentPage) {
+            return false
+        }
+
+        currentPage = nextPage
+        return true
+    }
+
+    private fun isHovered(mouseX: Int, mouseY: Int, x: Int, y: Int): Boolean {
+        return mouseX >= screenX + x && mouseX <= screenX + x + BUTTON_WIDTH &&
+                mouseY >= screenY + y && mouseY <= screenY + y + BUTTON_HEIGHT
+    }
+
+    private fun getButtonPosition(index: Int): Pair<Int, Int> {
+        val gridX = (index % GRID_COLUMNS) * BUTTON_SPACING + GRID_START_X
+        val gridY = (index / GRID_COLUMNS) * BUTTON_SPACING + GRID_START_Y
+        return Pair(gridX, gridY)
+    }
+
+    private fun pagedActions(): List<com.nbp.cobblemon_smartphone.api.SmartphoneAction> {
+        val from = currentPage * actionsPerPage
+        return actions.drop(from).take(actionsPerPage)
+    }
+
+    private fun playClickSound() {
+        Minecraft.getInstance().player?.playSound(CobblemonSounds.GUI_CLICK, 0.5f, 1f)
+    }
+
+    /** Notification badge on an app icon's top-right corner. Nothing is drawn when [count] is 0. */
+    private fun renderBadge(guiGraphics: GuiGraphics, count: Int, buttonX: Int, buttonY: Int, theme: SmartphoneTheme) {
+        if (count <= 0) return
+        val font = Minecraft.getInstance().font
+        val label = if (count > BADGE_MAX) "$BADGE_MAX+" else count.toString()
+        val badgeWidth = (font.width(label) * BADGE_SCALE).toInt() + BADGE_PADDING * 2
+        val badgeHeight = (font.lineHeight * BADGE_SCALE).toInt() + BADGE_PADDING
+        val badgeX = screenX + buttonX + BUTTON_WIDTH - badgeWidth
+        val badgeY = screenY + buttonY
+
+        guiGraphics.fill(badgeX, badgeY, badgeX + badgeWidth, badgeY + badgeHeight, theme.colors.danger)
+
+        val matrices = guiGraphics.pose()
+        matrices.pushPose()
+        matrices.translate((badgeX + BADGE_PADDING).toDouble(), (badgeY + BADGE_PADDING / 2.0), 0.0)
+        matrices.scale(BADGE_SCALE, BADGE_SCALE, 1f)
+        guiGraphics.drawString(font, label, 0, 0, theme.colors.textPrimary, false)
+        matrices.popPose()
+    }
+
+    private fun renderWorldTime(guiGraphics: GuiGraphics, theme: SmartphoneTheme) {
+        val minecraft = Minecraft.getInstance()
+        val dayTime = minecraft.level?.dayTime ?: 6000L
+        val ticksToday = Math.floorMod(dayTime, TICKS_PER_DAY)
+        val totalMinutes = ((ticksToday * MINUTES_PER_DAY / TICKS_PER_DAY) + DAWN_MINUTES) % MINUTES_PER_DAY
+        val hours = totalMinutes / MINUTES_PER_HOUR
+        val minutes = totalMinutes % MINUTES_PER_HOUR
+        val timeText = "%02d:%02d".format(hours, minutes)
+
+        guiGraphics.pose().pushPose()
+        guiGraphics.pose().translate(
+            (screenX + TIME_X).toDouble(),
+            (screenY + TIME_Y).toDouble(),
+            0.0
+        )
+        guiGraphics.pose().scale(TIME_SCALE, TIME_SCALE, 1f)
+        guiGraphics.drawString(minecraft.font, timeText, 0, 0, theme.timeColor, false)
+        guiGraphics.pose().popPose()
+    }
+
+    private fun renderHeaderSettingsButton(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, theme: SmartphoneTheme) {
+        val hovered = isInHeaderSettingsButton(mouseX, mouseY)
+        val textureY = if (hovered) HEADER_SETTINGS_SIZE else 0
+        guiGraphics.blit(
+            theme.getSettingsButtonTexture(),
+            screenX + HEADER_SETTINGS_X,
+            screenY + HEADER_SETTINGS_Y,
+            0f,
+            textureY.toFloat(),
+            HEADER_SETTINGS_SIZE,
+            HEADER_SETTINGS_SIZE,
+            HEADER_SETTINGS_SIZE,
+            HEADER_SETTINGS_SIZE * 2
+        )
+    }
+
+    private fun isInHeaderSettingsButton(mouseX: Int, mouseY: Int): Boolean {
+        return mouseX >= screenX + HEADER_SETTINGS_X && mouseX <= screenX + HEADER_SETTINGS_X + HEADER_SETTINGS_SIZE &&
+                mouseY >= screenY + HEADER_SETTINGS_Y && mouseY <= screenY + HEADER_SETTINGS_Y + HEADER_SETTINGS_SIZE
+    }
+
+    private fun renderFooterButtons(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, theme: SmartphoneTheme) {
+        renderFooterButton(guiGraphics, theme.getPrevButtonTexture(), FOOTER_PREV_X, mouseX, mouseY)
+        renderFooterButton(guiGraphics, theme.getHomeButtonTexture(), FOOTER_HOME_X, mouseX, mouseY)
+        renderFooterButton(guiGraphics, theme.getNextButtonTexture(), FOOTER_NEXT_X, mouseX, mouseY)
+    }
+
+    private fun renderHoveredTooltip(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        pagedActions().forEachIndexed { index, action ->
+            val (x, y) = getButtonPosition(index)
+            if (isHovered(mouseX, mouseY, x, y)) {
+                val lines = mutableListOf<Component>(action.displayName)
+                if (CobblemonSmartphone.config.energy.enableEnergy) {
+                    val cost = CobblemonSmartphone.config.energy.getCost(action.id)
+                    if (cost > 0) {
+                        val isInfinite = currentSmartphone?.isInfiniteEnergy() ?: false
+                        val hasEnough = isInfinite || (currentSmartphone?.hasEnoughEnergy(cost) ?: false)
+                        val color = if (hasEnough) ChatFormatting.GREEN else ChatFormatting.RED
+                        lines.add(Component.translatable("tooltip.cobblemon_smartphone.energy_cost", cost).withStyle(color))
+                        if (isInfinite) {
+                            lines.add(Component.translatable("tooltip.cobblemon_smartphone.energy_cost_rotom_free").withStyle(ChatFormatting.AQUA))
+                        }
+                    }
+                }
+                guiGraphics.renderComponentTooltip(font, lines, mouseX, mouseY)
+                return
+            }
+        }
+
+        if (SmartphoneBatteryRenderer.renderTooltip(font, guiGraphics, screenX, screenY, mouseX, mouseY, isLargeScreen = false, smartphoneStack)) {
+            return
+        }
+
+        val key = when {
+            isInHeaderSettingsButton(mouseX, mouseY) -> "settings"
+            isInFooterButton(mouseX, mouseY, FOOTER_PREV_X) -> "previous_page"
+            isInFooterButton(mouseX, mouseY, FOOTER_HOME_X) -> "first_page"
+            isInFooterButton(mouseX, mouseY, FOOTER_NEXT_X) -> "next_page"
+            else -> null
+        } ?: return
+        guiGraphics.renderTooltip(
+            font,
+            Component.translatable("cobblemon_smartphone.tooltip.$key"),
+            mouseX,
+            mouseY
+        )
+    }
+
+    private fun renderFooterButton(
+        guiGraphics: GuiGraphics,
+        texture: ResourceLocation,
+        x: Int,
+        mouseX: Int,
+        mouseY: Int
+    ) {
+        val hovered = isInFooterButton(mouseX, mouseY, x)
+        val textureY = if (hovered) FOOTER_BUTTON_SIZE else 0
+        guiGraphics.blit(
+            texture,
+            screenX + x,
+            screenY + FOOTER_BUTTON_Y,
+            0f,
+            textureY.toFloat(),
+            FOOTER_BUTTON_SIZE,
+            FOOTER_BUTTON_SIZE,
+            FOOTER_BUTTON_SIZE,
+            FOOTER_BUTTON_TEXTURE_HEIGHT
+        )
+    }
+
+    private fun renderPageDots(guiGraphics: GuiGraphics, theme: SmartphoneTheme) {
+        val totalPages = maxPage + 1
+        if (totalPages <= 1) {
+            return
+        }
+
+        val dotCount = totalPages.coerceAtMost(MAX_VISIBLE_DOTS)
+        val activeDot = when {
+            totalPages <= MAX_VISIBLE_DOTS -> currentPage
+            currentPage == 0 -> 0
+            currentPage == maxPage -> dotCount - 1
+            else -> 1
+        }
+        val startX = DOT_CENTER_X - ((dotCount * DOT_SIZE + (dotCount - 1) * DOT_SPACING) / 2)
+
+        repeat(dotCount) { index ->
+            val active = index == activeDot
+            val yOffset = if (active) 0 else DOT_INACTIVE_Y_OFFSET
+            PageDotRenderer.draw(
+                guiGraphics,
+                screenX + startX + index * (DOT_SIZE + DOT_SPACING),
+                screenY + DOT_Y + yOffset,
+                active,
+                activeColor = theme.colors.primary
+            )
+        }
+    }
+
+    private fun isInFooterButton(mouseX: Int, mouseY: Int, x: Int): Boolean {
+        return mouseX >= screenX + x && mouseX <= screenX + x + FOOTER_BUTTON_SIZE &&
+                mouseY >= screenY + FOOTER_BUTTON_Y && mouseY <= screenY + FOOTER_BUTTON_Y + FOOTER_BUTTON_SIZE
+    }
+
+    companion object {
+        private const val GRID_COLUMNS = 2
+        private const val GRID_ROWS = 3
+        private const val GRID_START_X = 26
+        private const val GRID_START_Y = 37
+        private const val BUTTON_SPACING = 43
+        private const val GUI_WIDTH = 131
+        private const val GUI_HEIGHT = 207
+        private const val BUTTON_WIDTH = 36
+        private const val BUTTON_HEIGHT = 36
+
+        private const val BADGE_MAX = 99
+        private const val BADGE_SCALE = 0.5f
+        private const val BADGE_PADDING = 2
+        private const val BADGE_BG_COLOR = 0xFFD03030.toInt()
+        private const val BADGE_TEXT_COLOR = 0xFFFFFFFF.toInt()
+
+        private const val HEADER_SETTINGS_X = 80
+        private const val HEADER_SETTINGS_Y = 17
+        private const val HEADER_SETTINGS_SIZE = 9
+
+        private const val TIME_X = 20
+        private const val TIME_Y = 20
+        private const val TIME_SCALE = 0.6f
+        private const val TIME_COLOR = 0xE6FFFF
+        private const val TICKS_PER_DAY = 24_000L
+        private const val MINUTES_PER_DAY = 1_440L
+        private const val MINUTES_PER_HOUR = 60L
+        private const val DAWN_MINUTES = 360L
+
+        private const val FOOTER_PREV_X = 36
+        private const val FOOTER_HOME_X = 62
+        private const val FOOTER_NEXT_X = 88
+        private const val FOOTER_BUTTON_Y = 187
+        private const val FOOTER_BUTTON_SIZE = 7
+        private const val FOOTER_BUTTON_TEXTURE_HEIGHT = 14
+
+        private const val MAX_VISIBLE_DOTS = 3
+        private const val DOT_CENTER_X = GUI_WIDTH / 2
+        private const val DOT_Y = 169
+        private const val DOT_SIZE = 9
+        private const val DOT_SPACING = 2
+        private const val DOT_INACTIVE_Y_OFFSET = 1
+
+        private val HOME_SCREEN_TEXTURE = ResourceLocation(
+            "cobblemon_smartphone",
+            "textures/gui/home_screen.png"
+        )
+        private val PREV_BUTTON_TEXTURE = ResourceLocation(
+            "cobblemon_smartphone",
+            "textures/gui/elements/prev_button.png"
+        )
+        private val HOME_BUTTON_TEXTURE = ResourceLocation(
+            "cobblemon_smartphone",
+            "textures/gui/elements/home_button.png"
+        )
+        private val NEXT_BUTTON_TEXTURE = ResourceLocation(
+            "cobblemon_smartphone",
+            "textures/gui/elements/next_button.png"
+        )
+        private val SETTINGS_BUTTON_TEXTURE = ResourceLocation(
+            "cobblemon_smartphone",
+            "textures/gui/elements/settings_button.png"
+        )
+    }
+}

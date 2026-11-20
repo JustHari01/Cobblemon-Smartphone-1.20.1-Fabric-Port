@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "id": "cobblemon_smartphone",
+  "version": "${version}",
+  "name": "Cobblemon Smartphone (UNOFFICIAL)",
+  "description": "Unofficial Fabric backport of Cobblemon Smartphone for Minecraft 1.20.1.",
+  "authors": [
+    "RapidMesck",
+    "ZungGames",
+    "JustHari01"
+  ],
+  "contact": {
+    "homepage": "https://github.com/JustHari01/Cobblemon-Smartphone-1.20.1-Fabric-Port",
+    "sources": "https://github.com/JustHari01/Cobblemon-Smartphone-1.20.1-Fabric-Port",
+    "issues": "https://github.com/JustHari01/Cobblemon-Smartphone-1.20.1-Fabric-Port/issues"
+  },
+  "license": "MIT",
+  "icon": "assets/cobblemon_smartphone/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.nbp.cobblemon_smartphone.CobblemonSmartphoneFabric"
+    ],
+    "client": [
+      "com.nbp.cobblemon_smartphone.client.CobblemonSmartphoneFabricClient"
+    ],
+    "voicechat": [
+      "com.nbp.cobblemon_smartphone.compat.voicechat.SmartphoneVoicechatPlugin"
+    ]
+  },
+  "mixins": [
+    "cobblemonsmartphone.mixins.json",
+    "cobblemonsmartphone-tomsstorage.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.16.5",
+    "minecraft": "~1.20.1",
+    "java": ">=17",
+    "fabric-api": "*"
+  },
+  "suggests": {
+    "trinkets": ">=3.10.0",
+    "accessories": "*",
+    "cobblenav": "*",
+    "cobbledollars": "*",
+    "voicechat": "*",
+    "waystones": "*",
+    "rctmod": "*"
+  }
+}

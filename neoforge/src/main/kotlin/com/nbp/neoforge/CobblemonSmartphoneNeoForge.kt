@@ -1,0 +1,230 @@
+package com.nbp.neoforge
+
+import com.nbp.cobblemon_smartphone.CobblemonSmartphone
+import com.nbp.cobblemon_smartphone.Implementation
+import com.nbp.cobblemon_smartphone.api.DatapackActionLoader
+import com.nbp.cobblemon_smartphone.client.ResourcePackActivationBehavior
+import com.nbp.cobblemon_smartphone.command.SocialCommands
+import com.nbp.cobblemon_smartphone.compat.tomsstorage.TomsStorageRemoteSession
+import com.nbp.cobblemon_smartphone.network.packet.SyncActionOrderPacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncedActionData
+import com.nbp.cobblemon_smartphone.network.packet.SyncDatapackActionsPacket
+import com.nbp.cobblemon_smartphone.energy.ElectricPokemonCharger
+import com.nbp.cobblemon_smartphone.network.packet.SyncEnergyConfigPacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncHiddenActionsPacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncQuickActionsPacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncMutedPlayersPacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncSocialMutePacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncThemePacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncUnreadPacket
+import com.nbp.cobblemon_smartphone.network.packet.SocialCapabilitiesPacket
+import com.nbp.cobblemon_smartphone.registry.CobblemonSmartphoneGpsItems
+import com.nbp.cobblemon_smartphone.registry.CobblemonSmartphoneItems
+import com.nbp.cobblemon_smartphone.server.RotomServerManager
+import com.nbp.cobblemon_smartphone.social.CallManager
+import com.nbp.cobblemon_smartphone.social.SocialData
+import com.nbp.cobblemon_smartphone.util.ActionOrderStorage
+import com.nbp.cobblemon_smartphone.util.HiddenActionsStorage
+import com.nbp.cobblemon_smartphone.util.MutedPlayersStorage
+import com.nbp.cobblemon_smartphone.util.QuickActionBindingsStorage
+import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
+import com.nbp.cobblemon_smartphone.util.SocialMuteStorage
+import com.nbp.cobblemon_smartphone.util.ThemeStorage
+import com.nbp.neoforge.compat.SmartphoneCompatManager
+import net.minecraft.core.registries.BuiltInRegistries
+import net.minecraft.core.registries.Registries
+import net.minecraft.network.chat.Component
+import net.minecraft.resources.ResourceKey
+import net.minecraft.resources.ResourceLocation
+import net.minecraft.server.packs.PackLocationInfo
+import net.minecraft.server.packs.PackSelectionConfig
+import net.minecraft.server.packs.PathPackResources
+import net.minecraft.server.packs.repository.BuiltInPackSource
+import net.minecraft.server.packs.repository.KnownPack
+import net.minecraft.server.packs.repository.Pack
+import net.minecraft.server.packs.repository.PackSource
+import net.minecraft.server.packs.repository.Pack.Position
+import net.minecraft.world.item.CreativeModeTab
+import net.minecraft.world.item.ItemStack
+import net.neoforged.fml.common.Mod
+import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent
+import net.neoforged.fml.ModList
+import net.neoforged.neoforge.capabilities.Capabilities
+import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent
+import net.neoforged.neoforge.common.NeoForge
+import com.nbp.neoforge.energy.SmartphoneNeoForgeEnergyStorage
+import net.neoforged.neoforge.event.AddPackFindersEvent
+import net.neoforged.neoforge.event.AddReloadListenerEvent
+import net.neoforged.neoforge.event.RegisterCommandsEvent
+import net.neoforged.neoforge.event.entity.player.PlayerContainerEvent
+import net.neoforged.neoforge.event.entity.player.PlayerEvent
+import net.neoforged.neoforge.event.tick.ServerTickEvent
+import net.neoforged.neoforge.registries.RegisterEvent
+import thedarkcolour.kotlinforforge.neoforge.forge.MOD_BUS
+import java.util.Optional
+
+@Mod(CobblemonSmartphone.ID)
+class CobblemonSmartphoneNeoForge : Implementation {
+    override val networkManager = CobblemonSmartphoneNeoForgeNetworkManager
+
+    init {
+        CobblemonSmartphone.init(this)
+        with(MOD_BUS) {
+            addListener(networkManager::registerMessages)
+            addListener(::onCommonSetup)
+            addListener(::onAddPackFinders)
+            addListener(::onRegisterCapabilities)
+        }
+
+        NeoForge.EVENT_BUS.addListener(::onAddReloadListener)
+
+        NeoForge.EVENT_BUS.addListener<PlayerEvent.PlayerLoggedInEvent> { event ->
+            val player = event.entity as? net.minecraft.server.level.ServerPlayer ?: return@addListener
+            val data = DatapackActionLoader.getDefinitions().map { def ->
+                SyncedActionData(
+                    def.id,
+                    def.texture,
+                    def.hoverTexture,
+                    def.requireUpgrade,
+                    def.requireMod,
+                    def.cooldownSeconds,
+                    def.patchouliBook
+                )
+            }
+            SyncDatapackActionsPacket(data).sendToPlayer(player)
+            com.nbp.cobblemon_smartphone.network.packet.SyncSmartphoneSkinsPacket(
+                com.nbp.cobblemon_smartphone.skin.DatapackSkinLoader.getSkins()
+            ).sendToPlayer(player)
+            SyncActionOrderPacket(ActionOrderStorage.read(player)).sendToPlayer(player)
+            SyncHiddenActionsPacket(HiddenActionsStorage.read(player)).sendToPlayer(player)
+            SyncQuickActionsPacket(QuickActionBindingsStorage.read(player)).sendToPlayer(player)
+            // DMs received while offline are already persisted; this lights up the badge on login.
+            player.server?.let { srv ->
+                SyncUnreadPacket(SocialData.get(srv).totalUnreadFor(player.uuid)).sendToPlayer(player)
+            }
+            SyncSocialMutePacket(SocialMuteStorage.read(player)).sendToPlayer(player)
+            SyncMutedPlayersPacket(MutedPlayersStorage.read(player).toList()).sendToPlayer(player)
+            val savedTheme = ThemeStorage.read(player)
+            if (savedTheme.isNotBlank()) {
+                SyncThemePacket(savedTheme).sendToPlayer(player)
+            }
+            SocialCapabilitiesPacket.fromServerConfig().sendToPlayer(player)
+            SyncEnergyConfigPacket.fromServerConfig().sendToPlayer(player)
+            com.nbp.cobblemon_smartphone.network.packet.SyncRotomConfigPacket.fromServerConfig().sendToPlayer(player)
+            RotomServerManager.onPlayerJoin(player)
+        }
+
+        // End any call a player was in when they disconnect, restoring the other side's voice group.
+        NeoForge.EVENT_BUS.addListener<PlayerEvent.PlayerLoggedOutEvent> { event ->
+            val player = event.entity as? net.minecraft.server.level.ServerPlayer ?: return@addListener
+            player.server?.let { CallManager.onLogout(it, player) }
+            TomsStorageRemoteSession.onLogout(player)
+            RotomServerManager.onPlayerDisconnect(player)
+            com.nbp.cobblemon_smartphone.social.SmartphoneInteractionManager.onLogout(player)
+        }
+
+        // Close out the remote-access bypass once the remotely-opened Toms Storage terminal
+        // closes. Native NeoForge event - no mixin needed to detect the container closing
+        // (the mixin is only for bypassing the held-item range check, see MixinStorageTerminalBlockEntity).
+        NeoForge.EVENT_BUS.addListener<PlayerContainerEvent.Close> { event ->
+            val player = event.entity as? net.minecraft.server.level.ServerPlayer ?: return@addListener
+            TomsStorageRemoteSession.end(player)
+        }
+        NeoForge.EVENT_BUS.addListener<ServerTickEvent.Post> { event ->
+            CallManager.tick(event.server)
+            ElectricPokemonCharger.tick(event.server)
+            RotomServerManager.tick(event.server)
+        }
+    }
+
+    private fun onCommonSetup(event: FMLCommonSetupEvent) {
+        event.enqueueWork {
+            // Initialize optional mod compatibility (Curios)
+            SmartphoneCompatManager.init()
+            SmartphoneHelper.getSmartphoneImpl = { player -> SmartphoneCompatManager.getSmartphone(player) }
+        }
+    }
+
+    override fun registerItems() {
+        with(MOD_BUS) {
+            addListener<RegisterEvent> { event ->
+                event.register(CobblemonSmartphoneItems.resourceKey) { helper ->
+                    CobblemonSmartphoneItems.register { resourceLocation, item -> helper.register(resourceLocation, item) }
+                }
+            }
+            addListener<RegisterEvent> { event ->
+                event.register(CobblemonSmartphoneGpsItems.resourceKey) { helper ->
+                    CobblemonSmartphoneGpsItems.register { resourceLocation, item -> helper.register(resourceLocation, item) }
+                }
+            }
+            addListener<RegisterEvent> { event ->
+                event.register(Registries.CREATIVE_MODE_TAB) { helper ->
+                    helper.register(
+                        ResourceKey.create(BuiltInRegistries.CREATIVE_MODE_TAB.key(), ResourceLocation.fromNamespaceAndPath(CobblemonSmartphone.ID, "cobblemon_smartphone")),
+                        CreativeModeTab.builder()
+                            .title(Component.translatable("itemGroup.cobblemon_smartphone.smartphone_group"))
+                            .icon { ItemStack(CobblemonSmartphoneItems.RED_SMARTPHONE) }
+                            .displayItems(CobblemonSmartphoneItems::addToGroup)
+                            .build()
+                    )
+                }
+            }
+        }
+    }
+
+    override fun registerCommands() {
+        NeoForge.EVENT_BUS.addListener<RegisterCommandsEvent> { event ->
+            SocialCommands.register(event.dispatcher)
+        }
+    }
+
+    override fun registerReloadListeners() {
+        // Handled via AddReloadListenerEvent in init block
+    }
+
+    private fun onAddReloadListener(event: AddReloadListenerEvent) {
+        event.addListener(DatapackActionLoader)
+        event.addListener(com.nbp.cobblemon_smartphone.skin.DatapackSkinLoader)
+    }
+
+    private fun onAddPackFinders(event: AddPackFindersEvent) {
+        val modFile = ModList.get().getModContainerById(CobblemonSmartphone.ID).orElse(null)?.modInfo ?: return
+
+        CobblemonSmartphone.builtinPacks
+            .filter { it.packType == event.packType }
+            .filter { it.neededMods.all(ModList.get()::isLoaded) }
+            .forEach {
+                val subPath = if (it.packType == net.minecraft.server.packs.PackType.CLIENT_RESOURCES) "resourcepacks" else "datapacks"
+                val packLocation = ResourceLocation.fromNamespaceAndPath(CobblemonSmartphone.ID, "$subPath/${it.id}")
+                val resourcePath = modFile.owningFile.file.findResource(packLocation.path)
+
+                val required = it.activationBehavior == ResourcePackActivationBehavior.ALWAYS_ENABLED
+                val pack = Pack.readMetaAndCreate(
+                    PackLocationInfo(
+                        "mod/$packLocation",
+                        it.displayName,
+                        PackSource.BUILT_IN,
+                        Optional.of(KnownPack("neoforge", "mod/$packLocation", modFile.version.toString()))
+                    ),
+                    BuiltInPackSource.fromName { packId -> PathPackResources(packId, resourcePath) },
+                    it.packType,
+                    PackSelectionConfig(required, Position.TOP, false)
+                )
+
+                if (pack == null) {
+                    CobblemonSmartphone.LOGGER.error("Failed to register built-in pack {}", it.id)
+                    return@forEach
+                }
+
+                event.addRepositorySource { consumer -> consumer.accept(pack) }
+            }
+    }
+
+    private fun onRegisterCapabilities(event: RegisterCapabilitiesEvent) {
+        event.registerItem(
+            Capabilities.EnergyStorage.ITEM,
+            { stack, _ -> SmartphoneNeoForgeEnergyStorage(stack) },
+            *CobblemonSmartphoneItems.all().toTypedArray()
+        )
+    }
+}

@@ -1,0 +1,89 @@
+package com.nbp.cobblemon_smartphone.api
+
+import com.nbp.cobblemon_smartphone.item.SmartphoneColor
+import com.nbp.cobblemon_smartphone.network.handler.HealPokemonHandler
+import com.nbp.cobblemon_smartphone.network.handler.OpenCobblenavFishingnavHandler
+import com.nbp.cobblemon_smartphone.network.handler.OpenCobblenavPokenavHandler
+import com.nbp.cobblemon_smartphone.network.handler.OpenCobbledollarsShopHandler
+import com.nbp.cobblemon_smartphone.network.handler.OpenCraftingTableHandler
+import com.nbp.cobblemon_smartphone.network.handler.OpenPCHandler
+import com.nbp.cobblemon_smartphone.network.handler.OpenPokedexHandler
+import com.nbp.cobblemon_smartphone.network.handler.OpenWaystonesWarpStoneHandler
+import com.nbp.cobblemon_smartphone.network.handler.server.OpenEnderChestHandler
+import com.nbp.cobblemon_smartphone.network.packet.OpenGpsScreenPacket
+import com.nbp.cobblemon_smartphone.network.packet.OpenPokeInfoScreenPacket
+import com.nbp.cobblemon_smartphone.network.packet.OpenStructureCompassScreenPacket
+import net.minecraft.server.MinecraftServer
+import net.minecraft.server.level.ServerPlayer
+
+enum class DatapackActionFunction(val id: String) {
+    OPEN_PC("open_pc") {
+        override fun execute(server: MinecraftServer, player: ServerPlayer) {
+            OpenPCHandler.execute(player, isNativeAction = false)
+        }
+    },
+    HEAL_PARTY("heal_party") {
+        override fun execute(server: MinecraftServer, player: ServerPlayer) {
+            HealPokemonHandler.execute(player, isNativeAction = false)
+        }
+    },
+    OPEN_POKEDEX("open_pokedex") {
+        override fun execute(server: MinecraftServer, player: ServerPlayer) {
+            OpenPokedexHandler.execute(player, SmartphoneColor.RED, isNativeAction = false)
+        }
+    },
+    OPEN_ENDER_CHEST("open_ender_chest") {
+        override fun execute(server: MinecraftServer, player: ServerPlayer) {
+            OpenEnderChestHandler.execute(player, isNativeAction = false)
+        }
+    },
+    OPEN_POKENAV("open_pokenav") {
+        override fun execute(server: MinecraftServer, player: ServerPlayer) {
+            OpenCobblenavPokenavHandler.execute(server, player, isNativeAction = false)
+        }
+    },
+    OPEN_WAYSTONE("open_waystone") {
+        override fun execute(server: MinecraftServer, player: ServerPlayer) {
+            OpenWaystonesWarpStoneHandler.execute(server, player, isNativeAction = false)
+        }
+    },
+    OPEN_COBBLEDOLLARS_SHOP("open_cobbledollars_shop") {
+        override fun execute(server: MinecraftServer, player: ServerPlayer) {
+            OpenCobbledollarsShopHandler.execute(player, isNativeAction = false)
+        }
+    },
+    OPEN_CRAFTING("open_crafting") {
+        override fun execute(server: MinecraftServer, player: ServerPlayer) {
+            OpenCraftingTableHandler.execute(player, isNativeAction = false)
+        }
+    },
+    OPEN_FISHINGNAV("open_fishingnav") {
+        override fun execute(server: MinecraftServer, player: ServerPlayer) {
+            OpenCobblenavFishingnavHandler.execute(server, player, isNativeAction = false)
+        }
+    },
+    OPEN_GPS("open_gps") {
+        override fun execute(server: MinecraftServer, player: ServerPlayer) {
+            OpenGpsScreenPacket().sendToPlayer(player)
+        }
+    },
+    OPEN_STRUCTURE_COMPASS("open_structure_compass") {
+        override fun execute(server: MinecraftServer, player: ServerPlayer) {
+            OpenStructureCompassScreenPacket().sendToPlayer(player)
+        }
+    },
+    OPEN_POKEINFO("open_pokeinfo") {
+        override fun execute(server: MinecraftServer, player: ServerPlayer) {
+            OpenPokeInfoScreenPacket().sendToPlayer(player)
+        }
+    };
+
+    abstract fun execute(server: MinecraftServer, player: ServerPlayer)
+
+    companion object {
+        private val byId = entries.associateBy { it.id }
+
+        fun fromId(id: String): DatapackActionFunction? = byId[id]
+        fun isKnown(id: String): Boolean = id in byId
+    }
+}
