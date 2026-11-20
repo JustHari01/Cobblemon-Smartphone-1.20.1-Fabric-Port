@@ -9,7 +9,7 @@
 - **License:** MIT
 - **Source URL:** https://github.com/JustHari01/Cobblemon-Smartphone-1.20.1-Fabric-Port
 - **Required projects:** Cobblemon (CurseForge project 687131); Fabric API (CurseForge project 306612)
-- **File:** `Cobblemon-Smartphone-1.20.1-Fabric-1.20.1-port.1.jar`
+- **File:** `cobblemon_smartphone-fabric-1.20.1-port.1.jar`
 - **Display name:** 1.20.1-port.1 (Fabric)
 - **Release type:** Alpha
 - **Game version / loader:** Minecraft 1.20.1 / Fabric
